@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Java Lab</title>
+    <!-- Bootstrap -->
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js"></script>
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+  </head>
+
+  <body>
+    <div class="row-fluid ">
+      <div class="span2">
+        <ul class="nav nav-list affix">
+          <div id="labparts"> 
+	    {% for part in parts %}
+	    <li><a onclick="setEditor('{{part.text}}')">{{part.name}}</a><i class="icon-chevron-right"></i></li>
+	    {% endfor %}
+	  </div>
+        </ul>
+      </div>
+
+      <script>
+	function setEditor(text) {
+  	  editor.setValue(unescape(text)); 
+	}
+      </script>
+
+      <div class="span10">
+	<!--TODO: fix the editor to use bootstrap, not style -->
+	<div class="btn-group">
+	  <button id="run-button" class="btn">Run</button>
+	  <button id="stop-button" class="btn">Stop</button>
+	</div>
+	<script>
+	  $("#run-button").click(function(event) {
+	  socket.send(JSON.stringify({
+	  type: 'compilerun',
+	  src: editor.getValue()}));
+	  });
+	  $("#stop-button").click(function(event) {
+	  socket.send(JSON.stringify({type: 'stop'}));
+	  });
+	</script>
+	<div id="servermsg" class="alert alert-error">no connection to server</div>
+
+	<div id="editor" style="height:300px;position:relative">
+	  import java.io.*;
+	  public class Main {
+	  public static void main(String[] args) {
+          BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+          System.out.println("type something: ");
+          String line = "";
+          try {
+          line = reader.readLine();
+          } catch (IOException e) {
+          System.err.println(e);
+          }
+          System.out.println("you typed: " + line);
+	  }
+	  }
+	</div>
+
+	<!--setup ace-->
+	<script>
+	  var editor = ace.edit("editor");
+          editor.setTheme("ace/theme/chrome");
+          editor.getSession().setMode("ace/mode/java");
+          editor.setPrintMarginColumn(100);
+	</script>
+
+	<select id="errors" size="5" onchange="errorSelect();">
+	</select>
+
+	<div id="out-wrapper">
+	  <textarea id="out" readonly="readonly">
+	    Program output will appear here.
+	  </textarea>
+	</div>
+	
+	<div id="input-wrapper">
+	  <input id="input-field" placeholder="Enter input to program here, then press enter" />
+	</div>
+	
+      </div>
+    </div>
+<script>
+function errorSelect() {
+    var errors = $("#errors")[0];
+    if(errors.length==0) return;
+    var error = errors.options[errors.selectedIndex].error;
+    editor.gotoLine(error.line, error.col);
+    $("#out")[0].value =
+	error.line + ': ' + error.text + '\n' + error.detail;
+}
+
+var socket = new WebSocket('ws://' + document.location.host + '/javaplay');
+socket.onmessage = function(event) {
+  console.log(event.data);
+  var r = JSON.parse(event.data);
+  var out = $("#out")[0];
+  var errors = $("#errors");
+  switch (r.type) {
+  case 'state':
+    $("#servermsg").removeClass("alert-error").addClass("alert-success").html(r.state);
+      if(r.state!='run') $("#stop-button").button("enable");
+      else $("#stop-button").button("disable");
+    if(r.state=='compile') {
+	out.value = '';
+	errors.find("option").remove();
+    }
+    break;
+  case 'stdout':
+    out.value += r.stdout;
+    out.scrollTop = out.scrollHeight;
+    break;
+  case 'stderr':
+    out.value += r.stderr;
+    out.scrollTop = out.scrollHeight;
+    break;
+  case 'compilefail':
+      errors.each(function() {
+	  console.log(r.errors);
+	  for (var i = 0; i < r.errors.length; i++) {
+	      var option = document.createElement('option');
+	      option.text = r.errors[i].line + ': ' + r.errors[i].text;
+	      option.error = r.errors[i];
+	      this.add(option, null);
+	      console.log(this);
+	  }
+      });
+      break;
+  }
+}
+
+
+$("#input-field").keypress(function(e) {
+    var code = (e.keyCode ? e.keyCode : e.which);
+    if(code == 13) {
+	socket.send(JSON.stringify({
+            type: 'stdin',
+            data: this.value + '\n'}));
+        this.value = '';
+    }
+});
+
+
+</script>
+
+
+
+
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+  </body>
+</html>
