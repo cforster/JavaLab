@@ -28,7 +28,8 @@
 
       <div class="span10">
 	<!--TODO: fix the editor to use bootstrap, not style -->
-	<div class="btn-group">
+	<div class="row">
+	<div class="span8 btn-group">
 	  <button id="run-button" class="btn">Run</button>
 	  <button id="stop-button" class="btn">Stop</button>
 	</div>
@@ -42,9 +43,11 @@
 	  socket.send(JSON.stringify({type: 'stop'}));
 	  });
 	</script>
-	<div id="servermsg" class="alert alert-error">no connection to server</div>
-
-	<div id="editor" style="height:300px;position:relative">
+	
+	<div id="servermsg" class="span4 alert alert-error">no connection to server</div>
+	</div>
+	<div class="row">
+	<div id="editor" style="height:300px;position:relative" class="span9">
 	  import java.io.*;
 	  public class Main {
 	  public static void main(String[] args) {
@@ -69,17 +72,22 @@
           editor.setPrintMarginColumn(100);
 	</script>
 
-	<select id="errors" size="5" onchange="errorSelect();">
+	<select id="errors" size="5" onchange="errorSelect();" style="height:300px;position:relative;border:0px" class="span3">
 	</select>
+	</div>
 
+	<div class="row">
 	<div id="out-wrapper">
-	  <textarea id="out" readonly="readonly">
+	  <textarea id="out" readonly="readonly" class="span9">
 	    Program output will appear here.
 	  </textarea>
 	</div>
+	</div>
 	
+	<div class="row">
 	<div id="input-wrapper">
-	  <input id="input-field" placeholder="Enter input to program here, then press enter" />
+	  <input id="input-field" class="span9" placeholder="Enter input to program here, then press enter" />
+	</div>
 	</div>
 	
       </div>
