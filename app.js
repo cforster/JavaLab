@@ -14,7 +14,13 @@ var labTemplate = swig.compile(String(fs.readFileSync('lab.html')));
 app.config.file({ file: path.join(__dirname, 'config', 'config.json') });
 
 app.use(flatiron.plugins.http);
-app.use(flatiron.plugins.ecstatic, { root: __dirname });
+if (flatiron.plugins.static) {
+  app.use(flatiron.plugins.static, { root: __dirname });
+} else if (flatiron.plugins.ecstatic) {
+  app.use(flatiron.plugins.ecstatic, { root: __dirname });
+} else {
+  throw 'No static serving plugin found';
+}
 app.use(javaplayserver);
 
 app.router.get('/lab', function () {
@@ -47,4 +53,4 @@ app.router.get('/lab', function () {
   });
 });
 
-app.start(80);
+app.start(app.config.get('httpPort'));
