@@ -45,9 +45,16 @@ var shareBroadwayPlugin = {
     var model = shareServer.createModel(options);
 
     var createAgent = require('share/src/server/useragent')(model, options);
-    var browserChannel = require('share/src/server/browserchannel');
+    var sessionHandler = require('share/src/server/session').handler;
+    var browserChannel = require('browserchannel').server;
     var browserChannelOptions = { server: app.server };
-    var bcHandler = browserChannel(createAgent, browserChannelOptions);
+    var bcHandler = browserChannel(browserChannelOptions, function(session) {
+      function wrapSession(s) {
+	s.ready = function() { return this.state != 'closed'; };
+	return s;
+      }
+      return sessionHandler(wrapSession(session), createAgent);
+    });
     this.http.before = this.http.before.concat(function(req, res, next) {
       bcHandler(req.request, res.response, next);
     });
