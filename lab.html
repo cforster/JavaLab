@@ -4,8 +4,11 @@
     <title>Java Lab</title>
     <!-- Bootstrap -->
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js"></script>
     <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <script src="ace/ace.js"></script>
+    <script src="channeldist/bcsocket-uncompressed.js"></script>
+    <script src="share/share.uncompressed.js"></script>
+    <script src="share/ace.js"></script>
   </head>
 
   <body>
@@ -70,6 +73,11 @@
           editor.setTheme("ace/theme/chrome");
           editor.getSession().setMode("ace/mode/java");
           editor.setPrintMarginColumn(100);
+
+          // TODO: different document names for different users/files
+          sharejs.open('replace-me-with-a-doc-name', 'text', function(error, doc) {
+            doc.attach_ace(editor);
+          });
 	</script>
 
 	<select id="errors" size="5" onchange="errorSelect();" style="height:300px;position:relative;border:0px" class="span3">

@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "async": "0.1.22",
+    "browserchannel": "0.4.2",
     "flatiron": "0.2.8",
     "share": "0.5.0",
     "st": "0.0.11",
