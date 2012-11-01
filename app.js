@@ -27,6 +27,7 @@ if (flatiron.plugins.static) {
 
 app.use(javaplayserver);
 
+<<<<<<< Updated upstream
 var shareBroadwayPlugin = {
   'name': 'sharejs',
   'attach': function(options) {
@@ -75,25 +76,76 @@ app.router.get('/lab', function () {
       app.res.writeHead(200, {'Content-type': 'text/plain'});
       app.res.end('Unknown lab ' + labName + '\n' + String(e));
       return;
-    }
-    var lab = JSON.parse(data);
-    async.map(lab.parts, function(f, done) {
-      fs.readFile(path.join('labs', labName, f), done);
-    }, function(e, results) {
-      if (e) {
-	app.res.writeHead(200, {'Content-type': 'text/plain'});
-	app.res.end('Bad config for lab ' + labName + '\n' + String(e));
-	return;
-      }
-      var parts = [];
-      for (var i = 0; i < results.length; i++) {
-	parts.push({'name': lab.parts[i], 'text': escape(results[i])});
-      }
-      var output = labTemplate({'parts': parts});
-      app.res.writeHead(200, {'Content-type': 'text/html'});
-      app.res.end(output);
-    });
-  });
+=======
+app.router.get('/', function(){
+    //render login.html
 });
 
+app.router.post('/', function() {
+    req.session.user = req.param('user');
+    res.redirect('/labs');
+});
+
+app.router.get('/logout', function() {
+    req.session.destroy(function(e){ res.send('ok', 200); });
+    res.redirect('/');
+});
+
+app.router.get('/labs', function() {
+    if (req.session.user == null){
+	// if user is not logged-in redirect back to login page //
+	res.redirect('/');
+    } 
+    else
+    {
+	//render the labs page
+	//needs labs list with lab.name is the name of the lab
+	//lab.ref is a name with no spaces
+>>>>>>> Stashed changes
+    }
+});
+
+<<<<<<< Updated upstream
 app.start(app.config.get('httpPort'));
+=======
+//change to takes labs/[labname]
+app.router.get('/lab', function () {
+    if (this.req.session.user == null){
+	// if user is not logged-in redirect back to login page //
+	app.res.redirect('/');
+    } 
+    else
+    {
+	var app = this;
+	var request = url.parse(this.req.url, true);
+	var labName = request.query.labName || 'arrays2d';
+	fs.readFile(path.join('labs', labName, 'lab.json'), function(e, data) {
+	    if (e) {
+		app.res.writeHead(200, {'Content-type': 'text/plain'});
+		app.res.end('Unknown lab ' + labName + '\n' + String(e));
+		return;
+	    }
+	    var lab = JSON.parse(data);
+	    async.map(lab.parts, function(f, done) {
+		fs.readFile(path.join('labs', labName, f), done);
+	    }, function(e, results) {
+		if (e) {
+		    app.res.writeHead(200, {'Content-type': 'text/plain'});
+		    app.res.end('Bad config for lab ' + labName + '\n' + String(e));
+		    return;
+		}
+		var parts = [];
+		for (var i = 0; i < results.length; i++) {
+		    parts.push({'name': lab.parts[i], 'text': escape(results[i])});
+		}
+		var output = labTemplate({'parts': parts});
+		app.res.writeHead(200, {'Content-type': 'text/html'});
+		app.res.end(output);
+	    });
+	});
+    }   
+});
+	       
+app.start(80);
+	       
+>>>>>>> Stashed changes
