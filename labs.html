@@ -3,13 +3,13 @@
   <head>
     <title>Java Lab</title>
     <!-- Bootstrap -->
-    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="assets/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
   </head>
   <body>
     <h1>Java Lab</h1>
 
     {% for lab in labs %}
-    <li><a href="{{lab.ref}}">{{lab.name}}</a></li>
+    <li><a href="lab/{{lab}}">{{lab}}</a></li>
     {% endfor %}
 
 
@@ -18,6 +18,6 @@
     </ul>
 
     <script src="http://code.jquery.com/jquery-latest.js"></script>
-    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
   </body>
 </html>
