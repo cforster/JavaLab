@@ -47,8 +47,8 @@ var shareBroadwayPlugin = {
     var browserChannelOptions = { server: app.server };
     var bcHandler = browserChannel(browserChannelOptions, function(session) {
       function wrapSession(s) {
-	s.ready = function() { return this.state != 'closed'; };
-	return s;
+        s.ready = function() { return this.state != 'closed'; };
+        return s;
       }
       return sessionHandler(wrapSession(session), createAgent);
     });
@@ -77,7 +77,7 @@ app.router.post('/', function() {
   if (!user) {
     info.res.writeHead(200, {'Content-type': 'text/plain'});
     info.res.end('tried login with no user');
-    return;		
+    return;             
   }
   this.req.session.user = user;
   labsHandler(this);
@@ -96,9 +96,9 @@ function labsHandler(info) {
   } else {
     fs.readdir('labs', function(e, files) {
       if (e) {
-	info.res.writeHead(200, {'Content-type': 'text/plain'});
-	info.res.end('labs folder not found\n' + String(e));
-	return;		
+        info.res.writeHead(200, {'Content-type': 'text/plain'});
+        info.res.end('labs folder not found\n' + String(e));
+        return;         
       }
       var output = labsTemplate({'labs':files});
       info.res.writeHead(200, {'Content-type': 'text/html'});
@@ -117,31 +117,31 @@ app.router.get(/\/lab\/:labName/, function (labName) {
     var request = url.parse(info.req.url, true);
     fs.readFile(path.join('labs', labName, 'lab.json'), function(e, data) {
       if (e) {
-	info.res.writeHead(200, {'Content-type': 'text/plain'});
-	info.res.end('Unknown lab ' + labName + '\n' + String(e));
-	return;
+        info.res.writeHead(200, {'Content-type': 'text/plain'});
+        info.res.end('Unknown lab ' + labName + '\n' + String(e));
+        return;
       }
       var lab = JSON.parse(data);
       async.map(lab.parts, function(f, done) {
-	fs.readFile(path.join('labs', labName, f), done);
+        fs.readFile(path.join('labs', labName, f), done);
       }, function(e, results) {
-	if (e) {
-	  info.res.writeHead(200, {'Content-type': 'text/plain'});
-	  info.res.end('Bad config for lab ' + labName + '\n' + String(e));
-	  return;
-	}
-	var parts = [];
-	for (var i = 0; i < results.length; i++) {
-	  parts.push({'name': lab.parts[i], 'text': escape(results[i])});
-	}
-	var output = labTemplate({'parts': parts,
-				  'user': info.req.session.user});
-	info.res.writeHead(200, {'Content-type': 'text/html'});
-	info.res.end(output);
+        if (e) {
+          info.res.writeHead(200, {'Content-type': 'text/plain'});
+          info.res.end('Bad config for lab ' + labName + '\n' + String(e));
+          return;
+        }
+        var parts = [];
+        for (var i = 0; i < results.length; i++) {
+          parts.push({'name': lab.parts[i], 'text': escape(results[i])});
+        }
+        var output = labTemplate({'parts': parts,
+                                  'user': info.req.session.user});
+        info.res.writeHead(200, {'Content-type': 'text/html'});
+        info.res.end(output);
       });
     });
   }   
 });
 
-app.start(app.config.get('httpPort'));	       
+app.start(app.config.get('httpPort'));         
 
