@@ -20,19 +20,9 @@ var loginTemplate = swig.compile(String(fs.readFileSync('login.html')));
 app.config.file({ file: path.join(__dirname, 'config', 'config.json') });
 
 app.use(flatiron.plugins.http);
-app.http.before.push(connect.cookieParser());
-app.http.before.push(connect.session({secret:'gumpdrops'}));
-
-if (flatiron.plugins.static) {
-  app.use(flatiron.plugins.static, { root: __dirname, url: '/assets' });
-} else if (flatiron.plugins.ecstatic) {
-  app.use(flatiron.plugins.ecstatic, { root: __dirname });
-} else {
-  throw 'No static serving plugin found';
-}
+app.use(flatiron.plugins.static, { root: __dirname, url: '/assets' });
 
 app.use(javaplayserver);
-
 
 var shareBroadwayPlugin = {
   'name': 'sharejs',
@@ -73,6 +63,9 @@ var shareBroadwayPlugin = {
 };
 app.use(shareBroadwayPlugin);
 
+app.http.before.push(connect.cookieParser());
+app.http.before.push(connect.session({secret:'gumpdrops'}));
+
 app.router.get('/', function(){
   var output = loginTemplate({ });
   this.res.writeHead(200, {'Content-type': 'text/html'});
@@ -92,7 +85,7 @@ app.router.post('/', function() {
 
 app.router.get('/logout', function() {
   var info = this;
-  info.req.session.destroy(function(e){ info.res.send('ok', 200); });
+  info.req.session.destroy(function(e){ info.res.end('ok', 200); });
   info.res.redirect('/');
 });
 
@@ -115,7 +108,6 @@ function labsHandler(info) {
 }
 app.router.get('/labs', function() { labsHandler(this); });
 
-//change to takes labs/[labname]
 app.router.get(/\/lab\/:labName/, function (labName) {
   var info = this;
   if (info.req.session.user == null){
@@ -142,14 +134,14 @@ app.router.get(/\/lab\/:labName/, function (labName) {
 	for (var i = 0; i < results.length; i++) {
 	  parts.push({'name': lab.parts[i], 'text': escape(results[i])});
 	}
-	var output = labTemplate({'parts': parts});
+	var output = labTemplate({'parts': parts,
+				  'user': info.req.session.user});
 	info.res.writeHead(200, {'Content-type': 'text/html'});
 	info.res.end(output);
       });
     });
   }   
 });
-
 
 app.start(app.config.get('httpPort'));	       
 
