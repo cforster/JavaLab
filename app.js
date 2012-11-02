@@ -120,7 +120,7 @@ function readLab(labName, callback) {
       fs.readFile(path.join('labs', labName, f), done);
     }, function(e, results) {
       if (e) {
-	callback(e);
+        callback(e);
         return;
       }
       var parts = [];
@@ -140,19 +140,19 @@ function populateDocs(user, labName, labParts, callback) {
       'text', 
       'http://localhost:' + app.config.get('httpPort') + '/channel',
       function(e, doc) {
-	if (e) {
-	  done(e);
-	  return;
-	}
-	if (!doc.getText()) {
-	  doc.insert(0, String(part.text), function(e, appliedOp) {
-	    doc.close();
-	    done(e);
-	  });
-	} else {
-	  doc.close();
-	  done();
-	}
+        if (e) {
+          done(e);
+          return;
+        }
+        if (!doc.getText()) {
+          doc.insert(0, String(part.text), function(e, appliedOp) {
+            doc.close();
+            done(e);
+          });
+        } else {
+          doc.close();
+          done();
+        }
       });
   }, callback);
 }
@@ -170,20 +170,20 @@ app.router.get(/\/lab\/:labName/, function(labName) {
         return;
       }
       populateDocs(info.req.session.user, labName, labParts, function(e) {
-	if (e) {
+        if (e) {
           info.res.writeHead(200, {'Content-type': 'text/plain'});
           info.res.end('Failed to populate docs\n' + String(e));
           return;
-	}
-	var partNames = [];
-	for (var i = 0; i < labParts.length; i++) {
-	  partNames.push(labParts[i].name);
-	}
+        }
+        var partNames = [];
+        for (var i = 0; i < labParts.length; i++) {
+          partNames.push(labParts[i].name);
+        }
         var output = labTemplate({'user': info.req.session.user,
-				  'labName': labName,
-				  'partNames': partNames});
+                                  'labName': labName,
+                                  'partNames': partNames});
         info.res.writeHead(200, {'Content-type': 'text/html'});
-        info.res.end(output);	
+        info.res.end(output);   
       });
     });
   }   
