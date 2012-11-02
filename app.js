@@ -38,7 +38,7 @@ var shareBroadwayPlugin = {
     this.http.before = this.http.before.concat(
       st({ path: distPath, url: '/channeldist/' }));
 
-    var options = { db: {type: 'none'} };
+    var options = { db: {type: 'mongo'} };
     var shareServer = require('share').server;
     var model = shareServer.createModel(options);
 
