@@ -17,16 +17,31 @@
 	<img src="/assets/javalablogo.gif" /><br /><br />
         <ul class="nav nav-list affix">
           <div id="labparts"> 
-	    {% for part in parts %}
-	    <li><a onclick="setEditor('{{part.text}}')">{{part.name}}</a><i class="icon-chevron-right"></i></li>
+	    {% for part in partNames %}
+	    <li><a onclick="setEditor('{{part}}')">{{part}}</a><i class="icon-chevron-right"></i></li>
 	    {% endfor %}
 	  </div>
         </ul>
       </div>
 
       <script>
-	function setEditor(text) {
-  	  editor.setValue(unescape(text)); 
+	var editorDoc = null;
+	function setEditor(part) {
+	  function openDoc() {
+            sharejs.open('{{user}}:{{labName}}:' + part, 'text', function(error, doc) {
+	      editorDoc = doc;
+              doc.attach_ace(editor);
+	      editor.focus();
+	      editor.gotoLine(1, 0, false);
+	      editor.scrollToRow(0);
+            });
+	  }
+	  if (editorDoc) {
+	    editorDoc.detach_ace();
+	    editorDoc.close(openDoc);
+	  } else {
+	    openDoc();
+	  }
 	}
       </script>
 
@@ -74,11 +89,6 @@
           editor.setTheme("ace/theme/chrome");
           editor.getSession().setMode("ace/mode/java");
           editor.setPrintMarginColumn(100);
-
-          // TODO: different document names for different users/files
-          sharejs.open('replace-me-with-a-doc-name', 'text', function(error, doc) {
-            doc.attach_ace(editor);
-          });
 	</script>
 
 	<select id="errors" size="5" onchange="errorSelect();" style="height:300px;position:relative;border:0px" class="span3">

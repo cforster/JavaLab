@@ -5,6 +5,7 @@ var async = require('async');
 var connect = require('connect');
 var fs = require('fs');
 var path = require('path');
+var shareClient = require('share').client;
 var st = require('st');
 var swig = require('swig');
 var url = require('url');
@@ -75,8 +76,8 @@ app.router.get('/', function(){
 app.router.post('/', function() {
   var user = this.req.body['user'];
   if (!user) {
-    info.res.writeHead(200, {'Content-type': 'text/plain'});
-    info.res.end('tried login with no user');
+    this.res.writeHead(200, {'Content-type': 'text/plain'});
+    this.res.end('tried login with no user');
     return;             
   }
   this.req.session.user = user;
@@ -108,36 +109,81 @@ function labsHandler(info) {
 }
 app.router.get('/labs', function() { labsHandler(this); });
 
-app.router.get(/\/lab\/:labName/, function (labName) {
+function readLab(labName, callback) {
+  fs.readFile(path.join('labs', labName, 'lab.json'), function(e, data) {
+    if (e) {
+      callback(e);
+      return;
+    }
+    var lab = JSON.parse(data);
+    async.map(lab.parts, function(f, done) {
+      fs.readFile(path.join('labs', labName, f), done);
+    }, function(e, results) {
+      if (e) {
+	callback(e);
+        return;
+      }
+      var parts = [];
+      for (var i = 0; i < results.length; i++) {
+        parts.push({'name': lab.parts[i], 'text': results[i]});
+      }
+      callback(null, parts);
+    });
+  });
+}
+
+function populateDocs(user, labName, labParts, callback) {
+  async.forEach(labParts, function(part, done) {
+    var docName = user + ':' + labName + ':' + part.name;
+    shareClient.open(
+      docName,
+      'text', 
+      'http://localhost:' + app.config.get('httpPort') + '/channel',
+      function(e, doc) {
+	if (e) {
+	  done(e);
+	  return;
+	}
+	if (!doc.getText()) {
+	  doc.insert(0, String(part.text), function(e, appliedOp) {
+	    doc.close();
+	    done(e);
+	  });
+	} else {
+	  doc.close();
+	  done();
+	}
+      });
+  }, callback);
+}
+
+app.router.get(/\/lab\/:labName/, function(labName) {
   var info = this;
   if (info.req.session.user == null){
     // if user is not logged-in redirect back to login page //
     info.res.redirect('/');
   } else {
-    var request = url.parse(info.req.url, true);
-    fs.readFile(path.join('labs', labName, 'lab.json'), function(e, data) {
+    readLab(labName, function(e, labParts) {
       if (e) {
         info.res.writeHead(200, {'Content-type': 'text/plain'});
-        info.res.end('Unknown lab ' + labName + '\n' + String(e));
+        info.res.end('Failed to read lab ' + labName + '\n' + String(e));
         return;
       }
-      var lab = JSON.parse(data);
-      async.map(lab.parts, function(f, done) {
-        fs.readFile(path.join('labs', labName, f), done);
-      }, function(e, results) {
-        if (e) {
+      populateDocs(info.req.session.user, labName, labParts, function(e) {
+	if (e) {
           info.res.writeHead(200, {'Content-type': 'text/plain'});
-          info.res.end('Bad config for lab ' + labName + '\n' + String(e));
+          info.res.end('Failed to populate docs\n' + String(e));
           return;
-        }
-        var parts = [];
-        for (var i = 0; i < results.length; i++) {
-          parts.push({'name': lab.parts[i], 'text': escape(results[i])});
-        }
-        var output = labTemplate({'parts': parts,
-                                  'user': info.req.session.user});
+	}
+	var partNames = [];
+	for (var i = 0; i < labParts.length; i++) {
+	  partNames.push(labParts[i].name);
+	}
+        var output = labTemplate({'user': info.req.session.user,
+				  'labName': labName,
+				  'partNames': partNames});
         info.res.writeHead(200, {'Content-type': 'text/html'});
-        info.res.end(output);
+        info.res.end(output);	
       });
     });
   }   
