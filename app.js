@@ -18,7 +18,7 @@ var labsTemplate = swig.compile(String(fs.readFileSync('labs.html')));
 var loginTemplate = swig.compile(String(fs.readFileSync('login.html')));
 
 
-app.config.file({ file: path.join(__dirname, 'config', 'config.json') });
+app.config.argv().file({ file: path.join(__dirname, 'config', 'config.json') });
 
 app.use(flatiron.plugins.http);
 app.use(flatiron.plugins.static, { root: __dirname, url: '/assets' });

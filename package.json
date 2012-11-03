@@ -17,7 +17,11 @@
   "scripts": {
     "start": "node app.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/cforster/JavaLab"
+  },
   "name": "javalab",
   "author": "cforster",
-  "homepage": "https://github.com/cforster/JavaLab"
+  "homepage": "http://github.com/cforster/JavaLab"
 }
