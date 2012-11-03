@@ -26,9 +26,15 @@
               $("#add-part-button").addClass('disabled');
             }
           });
+          $("#add-part-input").keyup(function(event) {
+            if (event.keyCode == 13) {
+              $("#add-part-button").click();
+            }
+          });
           $("#add-part-button").click(function(event) {
             var partName = $("#add-part-input")[0].value;
             $("#add-part-input")[0].value = '';
+            $("#add-part-button").addClass('disabled');
             if (!partName) return;
             $.ajax({
               url: '/lab/{{labName}}/parts/' + partName,

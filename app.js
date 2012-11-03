@@ -228,12 +228,18 @@ app.router.post(/\/lab\/:lab\/parts\/:part/, function(lab, part) {
         {error: 2, errorText: 'Failed to read lab for user'}));
       return;
     }
+    if (item.labParts.indexOf(part) != -1) {
+      info.res.writeHead(200, {'Content-type': 'application/json'});
+      info.res.end(JSON.stringify(
+        {error: 3, errorText: 'Lab part already exists'}));
+      return;
+    }
     item.labParts.push(part);
     updateUserLabParts(user, lab, item.labParts, function(e) {
       if (e) {
         info.res.writeHead(200, {'Content-type': 'application/json'});
         info.res.end(JSON.stringify(
-          {error: 3, errorText: 'Failed to update lab for user'}));
+          {error: 4, errorText: 'Failed to update lab for user'}));
         return;
       }
       info.res.writeHead(200, {'Content-type': 'application/json'});
