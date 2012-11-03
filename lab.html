@@ -14,10 +14,21 @@
     <div class="row-fluid ">
       <div class="span2">
         <img src="/assets/javalablogo.gif" />
-        <button id="add-part-button" class="btn">Add File</button>
+        <div class="input-append">
+          <input class="span9" id="add-part-input" type="text">
+          <button id="add-part-button" class="btn disabled">Add</button>
+        </div>
         <script>
+          $("#add-part-input").bind('input', function() {
+            if (this.value && this.value.indexOf(' ') == -1) {
+              $("#add-part-button").removeClass('disabled');
+            } else {
+              $("#add-part-button").addClass('disabled');
+            }
+          });
           $("#add-part-button").click(function(event) {
-            var partName = window.prompt('Enter new file name:');
+            var partName = $("#add-part-input")[0].value;
+            $("#add-part-input")[0].value = '';
             if (!partName) return;
             $.ajax({
               url: '/lab/{{labName}}/parts/' + partName,
