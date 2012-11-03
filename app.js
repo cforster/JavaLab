@@ -243,7 +243,7 @@ app.router.delete(/\/lab\/:lab\/parts\/:part/, function(lab, part) {
   readUserLab(user, lab, function(e, item) {
     if (e || !item) return failWithJson(info, 'Failed to read lab for user');
     var pos = item.labParts.indexOf(part);
-    if (pos == -1) return failWithJson('Lab does not have given part');
+    if (pos == -1) return failWithJson(info, 'Lab does not have given part');
     item.labParts.splice(pos, 1);
     updateUserLabParts(user, lab, item.labParts, function(e) {
       if (e) return failWithJson(info, 'Failed to update lab for user');
