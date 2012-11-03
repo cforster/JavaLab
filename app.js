@@ -4,6 +4,7 @@ var app = flatiron.app;
 var async = require('async');
 var connect = require('connect');
 var fs = require('fs');
+var mongo = require('mongodb');
 var path = require('path');
 var shareClient = require('share').client;
 var st = require('st');
@@ -132,6 +133,61 @@ function readLab(labName, callback) {
   });
 }
 
+var mongoServer = new mongo.Server('localhost', 27017, {auto_reconnect: true});
+var mongoDb = new mongo.Db('javalab', mongoServer, {safe: true});
+
+function openUserLabs(callback) {
+  mongoDb.open(function(e, db) {
+    if (e) { callback(e); return; }
+    db.collection('userlabs', function(e, collection) {
+      if (e) {
+        db.close();
+        callback(e);
+        return;
+      }
+      callback(null, db, collection);
+    });
+  });
+}
+
+function readUserLab(user, labName, callback) {
+  openUserLabs(function(e, db, collection) {
+    if (e) { callback(e); return; }
+    collection.findOne({user: user, labName: labName}, function(e, item) {
+      db.close();
+      if (e) { callback(e); return; }
+      callback(null, item);
+    });
+  });
+}
+
+function createUserLab(user, labName, labParts, callback) {
+  openUserLabs(function(e, db, collection) {
+    if (e) { callback(e); return; }
+    collection.insert(
+      {user: user, labName: labName, labParts: labParts},
+      {safe: true},
+      function(e, result) {
+        db.close();
+        callback(e);
+      });
+  });
+}
+
+function updateUserLabParts(user, labName, labParts, callback) {
+  openUserLabs(function(e, db, collection) {
+    if (e) { callback(e); return; }
+    collection.update(
+      {user: user, labName: labName},
+      {$set: {labParts: labParts}},
+      {safe: true},
+      function(e, result) {
+        db.close();
+        callback(e);
+      });
+  });
+}
+
 function populateDocs(user, labName, labParts, callback) {
   async.forEach(labParts, function(part, done) {
     var docName = user + ':' + labName + ':' + part.name;
@@ -157,35 +213,87 @@ function populateDocs(user, labName, labParts, callback) {
   }, callback);
 }
 
+app.router.post(/\/lab\/:lab\/parts\/:part/, function(lab, part) {
+  var info = this;
+  var user = info.req.session.user;
+  if (user == null) {
+    info.res.writeHead(200, {'Content-type': 'application/json'});
+    info.res.end(JSON.stringify({error: 1, errorText: 'Not logged in'}));
+    return;
+  }
+  readUserLab(user, lab, function(e, item) {
+    if (e || !item) {
+      info.res.writeHead(200, {'Content-type': 'application/json'});
+      info.res.end(JSON.stringify(
+        {error: 2, errorText: 'Failed to read lab for user'}));
+      return;
+    }
+    item.labParts.push(part);
+    updateUserLabParts(user, lab, item.labParts, function(e) {
+      if (e) {
+        info.res.writeHead(200, {'Content-type': 'application/json'});
+        info.res.end(JSON.stringify(
+          {error: 3, errorText: 'Failed to update lab for user'}));
+        return;
+      }
+      info.res.writeHead(200, {'Content-type': 'application/json'});
+      info.res.end(JSON.stringify({}));
+    });
+  });
+});
+
 app.router.get(/\/lab\/:labName/, function(labName) {
   var info = this;
-  if (info.req.session.user == null){
+  var user = info.req.session.user;
+  if (user == null){
     // if user is not logged-in redirect back to login page //
     info.res.redirect('/');
   } else {
-    readLab(labName, function(e, labParts) {
+    readUserLab(user, labName, function(e, item) {
       if (e) {
         info.res.writeHead(200, {'Content-type': 'text/plain'});
-        info.res.end('Failed to read lab ' + labName + '\n' + String(e));
+        info.res.end('MongoDB read failed for ' + user + ' ' + labName + '\n' +
+                     String(e));
         return;
       }
-      populateDocs(info.req.session.user, labName, labParts, function(e) {
-        if (e) {
-          info.res.writeHead(200, {'Content-type': 'text/plain'});
-          info.res.end('Failed to populate docs\n' + String(e));
-          return;
-        }
-        var partNames = [];
-        for (var i = 0; i < labParts.length; i++) {
-          partNames.push(labParts[i].name);
-        }
-        var output = labTemplate({'user': info.req.session.user,
-                                  'labName': labName,
-                                  'partNames': partNames});
-        info.res.writeHead(200, {'Content-type': 'text/html'});
-        info.res.end(output);   
-      });
+      if (item) {
+        render(item.labParts);
+      } else {
+        readLab(labName, function(e, labPartData) {
+          if (e) {
+            info.res.writeHead(200, {'Content-type': 'text/plain'});
+            info.res.end('Failed to read lab ' + labName + '\n' + String(e));
+            return;
+          }
+          var partNames = [];
+          for (var i = 0; i < labPartData.length; i++) {
+            partNames.push(labPartData[i].name);
+          }
+          createUserLab(user, labName, partNames, function(e) {
+            if (e) {
+              info.res.writeHead(200, {'Content-type': 'text/plain'});
+              info.res.end('Failed to create lab item in DB\n' + String(e));
+              return;
+            }       
+            populateDocs(user, labName, labPartData, function(e) {
+              if (e) {
+                info.res.writeHead(200, {'Content-type': 'text/plain'});
+                info.res.end('Failed to populate docs\n' + String(e));
+                return;
+              }
+              render(partNames);
+            });
+          });
+        });
+      }
     });
+    function render(partNames) {
+      var output = labTemplate({'user': user,
+                                'labName': labName,
+                                'partNames': partNames});
+      info.res.writeHead(200, {'Content-type': 'text/html'});
+      info.res.end(output);   
+    }
   }   
 });
 

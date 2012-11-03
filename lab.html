@@ -13,89 +13,112 @@
   <body>
     <div class="row-fluid ">
       <div class="span2">
-	<img src="/assets/javalablogo.gif" /><br /><br />
+        <img src="/assets/javalablogo.gif" />
+        <button id="add-part-button" class="btn">Add File</button>
+        <script>
+          $("#add-part-button").click(function(event) {
+            var partName = window.prompt('Enter new file name:');
+            if (!partName) return;
+            $.ajax({
+              url: '/lab/{{labName}}/parts/' + partName,
+              type: 'POST',
+              dataType: 'json'
+            }).done(function(data) {
+              if (data.error) {
+                console.log('New part error: ' + data.errorText);
+              } else {
+                var li = $('<li><a onclick="setEditor(\'' + partName +
+                           '\')">' + partName +
+                           '</a><i class="icon-chevron-right"></i></li>');
+                $("#labparts").append(li);
+              }
+            }).fail(function(jqXHR, status) {
+              console.log('New part error: ' + status);
+            });
+          });
+        </script>
         <ul class="nav nav-list affix">
           <div id="labparts"> 
-	    {% for part in partNames %}
-	    <li><a onclick="setEditor('{{part}}')">{{part}}</a><i class="icon-chevron-right"></i></li>
-	    {% endfor %}
-	  </div>
+            {% for part in partNames %}
+            <li><a onclick="setEditor('{{part}}')">{{part}}</a><i class="icon-chevron-right"></i></li>
+            {% endfor %}
+          </div>
         </ul>
       </div>
 
       <script>
-	var editorDoc = null;
-	function setEditor(part) {
-	  function openDoc() {
+        var editorDoc = null;
+        function setEditor(part) {
+          function openDoc() {
             sharejs.open('{{user}}:{{labName}}:' + part, 'text', function(error, doc) {
-	      editorDoc = doc;
+              editorDoc = doc;
               doc.attach_ace(editor);
-	      editor.focus();
-	      editor.gotoLine(1, 0, false);
-	      editor.scrollToRow(0);
+              editor.focus();
+              editor.gotoLine(1, 0, false);
+              editor.scrollToRow(0);
             });
-	  }
-	  if (editorDoc) {
-	    editorDoc.detach_ace();
-	    editorDoc.close(openDoc);
-	  } else {
-	    openDoc();
-	  }
-	}
+          }
+          if (editorDoc) {
+            editorDoc.detach_ace();
+            editorDoc.close(openDoc);
+          } else {
+            openDoc();
+          }
+        }
       </script>
 
       <div class="span10">
-	<!--TODO: fix the editor to use bootstrap, not style -->
-	<div class="row">
-	<div class="span8 btn-group">
-	  <button id="run-button" class="btn">Run</button>
-	  <button id="stop-button" class="btn disabled">Stop</button>
-	</div>
-	<script>
-	  $("#run-button").click(function(event) {
-	    socket.send(JSON.stringify({
-	      type: 'compilerun',
-	      src: editor.getValue()}));
-	  });
-	  $("#stop-button").click(function(event) {
-	    socket.send(JSON.stringify({type: 'stop'}));
-	  });
-	</script>
-	
-	<div id="servermsg" class="span4 alert alert-error">disconnected</div>
-	</div>
-	<div class="row">
-	  <div id="editor" style="height:300px;position:relative" class="span9">import java.io.*;
+        <!--TODO: fix the editor to use bootstrap, not style -->
+        <div class="row">
+        <div class="span8 btn-group">
+          <button id="run-button" class="btn">Run</button>
+          <button id="stop-button" class="btn disabled">Stop</button>
+        </div>
+        <script>
+          $("#run-button").click(function(event) {
+            socket.send(JSON.stringify({
+              type: 'compilerun',
+              src: editor.getValue()}));
+          });
+          $("#stop-button").click(function(event) {
+            socket.send(JSON.stringify({type: 'stop'}));
+          });
+        </script>
+        
+        <div id="servermsg" class="span4 alert alert-error">disconnected</div>
+        </div>
+        <div class="row">
+          <div id="editor" style="height:300px;position:relative" class="span9">import java.io.*;
 public class Main {
   public static void main(String[] args) {
     System.out.println("Hello world");
   }
 }</div>
-	  <script>
-	    var editor = ace.edit("editor");
+          <script>
+            var editor = ace.edit("editor");
             editor.setTheme("ace/theme/chrome");
             editor.getSession().setMode("ace/mode/java");
             editor.setPrintMarginColumn(100);
             editor.getSession().setUseSoftTabs(true);
             editor.getSession().setTabSize(2);
-	  </script>
+          </script>
 
-	  <select id="errors" size="5" onchange="errorSelect();" style="height:300px;position:relative;border:0px" class="span3">
-	  </select>
-	</div>
+          <select id="errors" size="5" onchange="errorSelect();" style="height:300px;position:relative;border:0px" class="span3">
+          </select>
+        </div>
 
-	<div class="row">
-	  <div id="out-wrapper">
-	    <textarea id="out" readonly="readonly" class="span9" rows="6">Program output will appear here.</textarea>
-	  </div>
-	</div>
-	
-	<div class="row">
-	  <div id="input-wrapper">
-	    <input id="input-field" class="span9" placeholder="Enter input to program here, then press enter" />
-	  </div>
-	</div>
-	
+        <div class="row">
+          <div id="out-wrapper">
+            <textarea id="out" readonly="readonly" class="span9" rows="6">Program output will appear here.</textarea>
+          </div>
+        </div>
+        
+        <div class="row">
+          <div id="input-wrapper">
+            <input id="input-field" class="span9" placeholder="Enter input to program here, then press enter" />
+          </div>
+        </div>
+        
       </div>
     </div>
     <script>
