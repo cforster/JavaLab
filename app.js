@@ -213,35 +213,40 @@ function populateDocs(user, labName, labParts, callback) {
   }, callback);
 }
 
+function failWithJson(info, errorText) {
+  info.res.writeHead(200, {'Content-type': 'application/json'});
+  info.res.end(JSON.stringify({error: errorText}));
+}
+
 app.router.post(/\/lab\/:lab\/parts\/:part/, function(lab, part) {
   var info = this;
   var user = info.req.session.user;
-  if (user == null) {
-    info.res.writeHead(200, {'Content-type': 'application/json'});
-    info.res.end(JSON.stringify({error: 1, errorText: 'Not logged in'}));
-    return;
-  }
+  if (user == null) return failWithJson(info, 'Not logged in');
   readUserLab(user, lab, function(e, item) {
-    if (e || !item) {
-      info.res.writeHead(200, {'Content-type': 'application/json'});
-      info.res.end(JSON.stringify(
-        {error: 2, errorText: 'Failed to read lab for user'}));
-      return;
-    }
+    if (e || !item) return failWithJson(info, 'Failed to read lab for user');
     if (item.labParts.indexOf(part) != -1) {
-      info.res.writeHead(200, {'Content-type': 'application/json'});
-      info.res.end(JSON.stringify(
-        {error: 3, errorText: 'Lab part already exists'}));
-      return;
+      return failWithJson(info, 'Lab part already exists');
     }
     item.labParts.push(part);
     updateUserLabParts(user, lab, item.labParts, function(e) {
-      if (e) {
-        info.res.writeHead(200, {'Content-type': 'application/json'});
-        info.res.end(JSON.stringify(
-          {error: 4, errorText: 'Failed to update lab for user'}));
-        return;
-      }
+      if (e) return failWithJson(info, 'Failed to update lab for user');
+      info.res.writeHead(200, {'Content-type': 'application/json'});
+      info.res.end(JSON.stringify({}));
+    });
+  });
+});
+
+app.router.delete(/\/lab\/:lab\/parts\/:part/, function(lab, part) {
+  var info = this;
+  var user = info.req.session.user;
+  if (user == null) return failWithJson(info, 'Not logged in');
+  readUserLab(user, lab, function(e, item) {
+    if (e || !item) return failWithJson(info, 'Failed to read lab for user');
+    var pos = item.labParts.indexOf(part);
+    if (pos == -1) return failWithJson('Lab does not have given part');
+    item.labParts.splice(pos, 1);
+    updateUserLabParts(user, lab, item.labParts, function(e) {
+      if (e) return failWithJson(info, 'Failed to update lab for user');
       info.res.writeHead(200, {'Content-type': 'application/json'});
       info.res.end(JSON.stringify({}));
     });

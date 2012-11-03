@@ -42,11 +42,14 @@
               dataType: 'json'
             }).done(function(data) {
               if (data.error) {
-                console.log('New part error: ' + data.errorText);
+                console.log('New part error: ' + data.error);
               } else {
-                var li = $('<li><a onclick="setEditor(\'' + partName +
+                var li = $('<li>' +
+                           '<a onclick="removePart(this, \'' + partName +
+                           '\');"><i class="icon-remove"></i></a> ' +
+                           '<a onclick="setEditor(\'' + partName +
                            '\')">' + partName +
-                           '</a><i class="icon-chevron-right"></i></li>');
+                           '</a> <i class="icon-chevron-right"></i></li>');
                 $("#labparts").append(li);
               }
             }).fail(function(jqXHR, status) {
@@ -55,15 +58,36 @@
           });
         </script>
         <ul class="nav nav-list affix">
-          <div id="labparts"> 
+          <div id="labparts">
             {% for part in partNames %}
-            <li><a onclick="setEditor('{{part}}')">{{part}}</a><i class="icon-chevron-right"></i></li>
+            <li>
+              <a onclick="removePart(this, '{{part}}');"><i class="icon-remove"></i></a>
+              <a onclick="setEditor('{{part}}');">{{part}}</a>
+              <i class="icon-chevron-right"></i>
+            </li>
             {% endfor %}
           </div>
         </ul>
       </div>
 
       <script>
+        function removePart(self, part) {
+          var li = self.parentElement;
+          $.ajax({
+            url: '/lab/{{labName}}/parts/' + part,
+            type: 'DELETE',
+            dataType: 'json'
+          }).done(function(data) {
+            if (data.error) {
+              console.log('Remove part error: ' + data.error);
+            } else {
+              li.parentElement.removeChild(li);
+            }
+          }).fail(function(jqXHR, status) {
+            console.log('Remove part error: ' + status);
+          });
+        }
+
         var editorDoc = null;
         function setEditor(part) {
           function openDoc() {
