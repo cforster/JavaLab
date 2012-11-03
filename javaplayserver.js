@@ -29,7 +29,7 @@ exports.attach = function(options) {
 exports.init = function(done) {
   var app = this;
   fs.mkdir(DATA_PATH, function(e) {
-    if (e.code != 'EEXIST') throw e;
+    if (e && e.code != 'EEXIST') throw e;
     fs.writeFile(POLICY_FILE, 'grant {};', function(e) {
       if (e) throw e;
       initServer(app.server);
