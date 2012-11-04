@@ -48,3 +48,6 @@ tramp
 # Org-mode
 .org-id-locations
 *_archive
+
+# node packages
+node_modules/*
