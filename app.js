@@ -13,6 +13,7 @@ var url = require('url');
 var util = require('util');
 
 var javaplayserver = require('./javaplayserver');
+var userstateserver = require('./userstateserver');
 
 var labTemplate = swig.compile(String(fs.readFileSync('lab.html')));
 var labsTemplate = swig.compile(String(fs.readFileSync('labs.html')));
@@ -25,6 +26,7 @@ app.use(flatiron.plugins.http);
 app.use(flatiron.plugins.static, { root: __dirname, url: '/assets' });
 
 app.use(javaplayserver);
+app.use(userstateserver);
 
 var shareBroadwayPlugin = {
   'name': 'sharejs',
