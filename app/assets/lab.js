@@ -1,4 +1,48 @@
 function LabCtrl($scope) {
+  $scope.user = 'matt';
+  $scope.lab = 'arrays2d';
+  $scope.servermsg = "disconnected";
+
+  var socket = new WebSocket('ws://' + document.location.host + '/labserver');
+  socket.onopen = function(event) {
+    $scope.$apply(function() {
+      $scope.servermsg = "idle";
+      socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
+      socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+    });
+  }
+  socket.onmessage = function(event) {
+    $scope.$apply(function() {
+      var r = JSON.parse(event.data);
+      switch (r.type) {
+      case 'error':
+        console.log(r.text);
+        break;
+      case 'updateLabParts':
+        $scope.parts = [];
+        for (var i = 0; i < r.labParts.length; i++) {
+          $scope.parts.push({name: r.labParts[i]});
+        }
+        if ($scope.activePart) {
+          var activePartIndex = r.labParts.indexOf($scope.activePart.name);
+          if (activePartIndex != -1) {
+            $scope.switchPart($scope.parts[activePartIndex]);
+          } else {
+            $scope.switchPart($scope.parts[0] || null);
+          }
+        } else {
+          $scope.switchPart($scope.parts[0] || null);
+        }
+        break;
+      }
+    });
+  }
+  socket.onerror = socket.onclose = function(event) {
+    $scope.$apply(function() {
+      $scope.servermsg = "disconnected";
+    });
+  }
+
   $scope.showErrors = false;
   $scope.showOutput = false;
 
@@ -12,17 +56,38 @@ function LabCtrl($scope) {
     $scope.editor.gotoLine($scope.selectedError.line, $scope.selectedError.col);
   }
 
+  var editorDoc = null;
   $scope.newPartPattern = /^[A-Za-z0-9]*$/;
-  $scope.parts = [{name: 'HelloWorld'}];
+  $scope.parts = [];
   $scope.activePart = null;
   $scope.switchPart = function(part) {
     $scope.activePart = part;
     if (part == null) {
-      $scope.editor.setValue('');
+      if (editorDoc) {
+        editorDoc.detach_ace();
+        editorDoc.close(function() {
+          $scope.editor.setValue('');
+        });
+      }
     } else {
-      $scope.editor.setValue(part.name);
-      $scope.editor.gotoLine(1, 0, false);
-      $scope.editor.scrollToRow(0);
+      function openDoc() {
+        sharejs.open(
+          $scope.user + ':' + $scope.lab + ':' + part.name,
+          'text',
+          function(e, doc) {
+            if (e) return console.log(e);
+            editorDoc = doc;
+            doc.attach_ace($scope.editor);
+            $scope.editor.gotoLine(1, 0, false);
+            $scope.editor.scrollToRow(0);
+          });
+      }
+      if (editorDoc) {
+        editorDoc.detach_ace();
+        editorDoc.close(openDoc);
+      } else {
+        openDoc();
+      }
     }
   }
   $scope.removePart = function(part) {

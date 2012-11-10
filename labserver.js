@@ -1,6 +1,8 @@
 var util = require('util');
 var ws = require('ws');
 
+var labdb = require('./labdb');
+
 exports.attach = function(options) {
 }
 
@@ -12,52 +14,52 @@ exports.init = function(done) {
 
 var userSockets = {};
 
-exports.labPartsUpdated = function(user, lab, labParts) {
-  var userSocketList = userSockets[user];
-  if (userSocketList) {
-    for (var i = 0; i < userSocketList.length; i++) {
-      userSocketList[i].labPartsUpdated(lab, labParts);
-    }
-  }
-}
-
 function initServer(server) {
-  var wsServer = new ws.Server({server: server, path: '/userstate'});
+  var wsServer = new ws.Server({server: server, path: '/labserver'});
   wsServer.on('connection', function(sock) {
     var user = '';
+    var lab = '';
 
     var sockFuncs = {
-      'labPartsUpdated': function(lab, labParts) {
-        sock.send(JSON.stringify({'type': 'labPartsUpdated',
-                                  'user': user,
-                                  'lab': lab,
-                                  'labParts': labParts}));
+      'updateLabParts': function(lab, labParts) {
+        sock.send(JSON.stringify(
+          {'type': 'updateLabParts', 'lab': lab, 'labParts': labParts}));
       }
     };
+
+    function sendError(errorText, e) {
+      if (e) errorText += ': ' + e;
+      sock.send(JSON.stringify({'type': 'error', 'text': errorText}));
+    }
 
     sock.on('message', function(message) {
       var req;
       try {
         req = JSON.parse(message);
       } catch (e) {
-        sock.send(JSON.stringify({'type': 'error',
-				  'text': 'Failed to parse request: ' + e}));
-        return;
+        return sendError('Failed to parse request', e);
+      }
+
+      if (!user && req.type != 'setUser') {
+        return sendError('User has not been set');
       }
 
       switch (req.type) {
-      case 'user':
-        if (user) {
-          sock.send(JSON.stringify({'type': 'error',
-				    'text': 'User has already been set'}));
-          return;
-        }
+      case 'setUser':
+        if (user) return sendError('User has already been set');
         user = req.user;
         if (user in userSockets) {
           userSockets[user].push(sockFuncs);
         } else {
           userSockets[user] = [sockFuncs];
         }
+        break;
+      case 'setLab':
+        lab = req.lab;
+        labdb.getOrCreateUserLab(user, lab, function(e, labInfo) {
+          if (e) return sendError('Failed to get user lab', e);
+          sockFuncs.updateLabParts(lab, labInfo.labParts);
+        });
         break;
       }
     });

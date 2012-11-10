@@ -33,7 +33,7 @@
       float: right;
     }
 
-    #btn-group {
+    #header-buttons {
       margin-top: 10px;
       margin-right: 4px;
       height: 30px;
@@ -129,10 +129,10 @@
   <div id="header">
     <img src="javalablogo.gif"
 	 style="margin-top: 4px; margin-left: 4px; float: left" />
-    <div id="servermsg" class="alert alert-error">
-      disconnected
-    </div>
-    <div class="btn-group">
+    <div id="servermsg"
+         ng-class="{'alert-error': servermsg == 'disconnected', 'alert-success': servermsg != 'disconnected'}"
+         class="alert" ng-bind="servermsg"></div>
+    <div id="header-buttons" class="btn-group">
       <button id="run-button" class="btn">Run</button>
       <button id="stop-button" class="btn disabled">Stop</button>
     </div>
@@ -168,12 +168,7 @@
     </div>
     <div id="editorwrapper"
 	 style="position: relative; width: 100%; min-height: 100%">
-      <div id="editor" ng-init="initEditor()">import java.io.*;
-public class Main {
-  public static void main(String[] args) {
-    System.out.println("Hello world");
-  }
-}</div>
+      <div id="editor" ng-init="initEditor()"></div>
     </div>
   </div>
 
