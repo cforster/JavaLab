@@ -1,4 +1,5 @@
 function LabCtrl($scope) {
+  // TODO: implement user+lab selection over websocket
   $scope.user = 'matt';
   $scope.lab = 'arrays2d';
   $scope.servermsg = "disconnected";
@@ -18,6 +19,15 @@ function LabCtrl($scope) {
       case 'error':
         console.log(r.text);
         break;
+      case 'state':
+        $scope.servermsg = r.state;
+        if (r.state == 'run') {
+          clearTerm();
+          $('#footertabs a[href="#output-tab"]').tab('show');
+          $scope.errors = [];
+          $scope.selectedError = null
+        }
+        break;
       case 'updateLabParts':
         $scope.parts = [];
         for (var i = 0; i < r.labParts.length; i++) {
@@ -26,6 +36,8 @@ function LabCtrl($scope) {
         if ($scope.activePart) {
           var activePartIndex = r.labParts.indexOf($scope.activePart.name);
           if (activePartIndex != -1) {
+            // TODO: don't reload our sharejs doc if our active part
+            // didn't really change
             $scope.switchPart($scope.parts[activePartIndex]);
           } else {
             $scope.switchPart($scope.parts[0] || null);
@@ -34,24 +46,27 @@ function LabCtrl($scope) {
           $scope.switchPart($scope.parts[0] || null);
         }
         break;
+      case 'compileErrors':
+        $scope.errors = r.compileErrors;
+        $scope.selectedError = $scope.errors[0] || null;
+        $('#footertabs a[href="#errors-tab"]').tab('show');
+        $scope.onErrorSelect();
+        break;
+      case 'stdout':
+        termStdout(r.stdout);
+        break;
       }
     });
   }
   socket.onerror = socket.onclose = function(event) {
     $scope.$apply(function() {
       $scope.servermsg = "disconnected";
+      // TODO: disable doc editing when disconnected
     });
   }
 
-  $scope.showErrors = false;
-  $scope.showOutput = false;
-
-  $scope.errors = [
-    {line: '3', col: 10, text: 'error one', detail: 'error\ndetail\nhere'},
-    {line: '5', col: 4, text: 'error two', detail: 'error2\ndetail\nhere'},
-    {line: '6', col: 1, text: 'error three', detail: 'error3\ndetail\nhere'}
-  ];
-  $scope.selectedError = $scope.errors[0];
+  $scope.errors = [];
+  $scope.selectedError = null;
   $scope.onErrorSelect = function() {
     $scope.editor.gotoLine($scope.selectedError.line, $scope.selectedError.col);
   }
@@ -65,9 +80,9 @@ function LabCtrl($scope) {
     if (part == null) {
       if (editorDoc) {
         editorDoc.detach_ace();
-        editorDoc.close(function() {
-          $scope.editor.setValue('');
-        });
+        $scope.editor.setValue('No part selected');
+        editorDoc.close();
+        editorDoc = null;
       }
     } else {
       function openDoc() {
@@ -84,13 +99,16 @@ function LabCtrl($scope) {
       }
       if (editorDoc) {
         editorDoc.detach_ace();
+        $scope.editor.setValue('Loading...');
         editorDoc.close(openDoc);
+        editorDoc = null;
       } else {
         openDoc();
       }
     }
   }
   $scope.removePart = function(part) {
+    socket.send(JSON.stringify({type: 'deleteLabPart', partName: part.name}));
     var i = $scope.parts.indexOf(part);
     $scope.parts.splice(i, 1);
     if ($scope.activePart == part) {
@@ -111,10 +129,23 @@ function LabCtrl($scope) {
       return;
     }
 
+    socket.send(JSON.stringify(
+      {type: 'addLabPart', partName: $scope.newPartName}));
     var newPart = {name: $scope.newPartName};
     $scope.newPartName = '';
     $scope.parts.push(newPart);
     $scope.switchPart(newPart);
+  }
+
+  $scope.run = function() {
+    if (socket.readyState != 1) return;
+    var src = $scope.editor.getValue();
+    socket.send(JSON.stringify({type: 'compileRun', src: src}));
+  }
+
+  $scope.stop = function() {
+    if (socket.readyState != 1) return;
+    socket.send(JSON.stringify({type: 'stop'}));
   }
 
   $scope.initEditor = function() {
@@ -124,9 +155,15 @@ function LabCtrl($scope) {
     $scope.editor.setPrintMarginColumn(100);
     $scope.editor.getSession().setUseSoftTabs(true);
     $scope.editor.getSession().setTabSize(2);
+    $scope.editor.setValue('No part loaded');
   }
 
   var termStdinStart = 0;
+  function clearTerm() {
+    var term = $('#terminal')[0];
+    term.value = '';
+    termStdinStart = 0;
+  }
   function termStdout(stdoutData) {
     var term = $('#terminal')[0];
     var stdinData = '';
@@ -139,29 +176,43 @@ function LabCtrl($scope) {
     if (stdinData) {
       term.value += stdinData;
     }
+    term.scrollTop = term.scrollHeight;
   }
   $scope.initTerminal = function() {
-    termStdout('line one\n');
-    termStdout('prompt>');
+    clearTerm();
     var term = $('#terminal')[0];
     $('#terminal').keydown(function(event) {
       if (event.which == 8) {
+        if ($scope.servermsg != 'run') {
+          event.preventDefault();
+          return;
+        }
         if (term.value.length > termStdinStart) {
           term.value = term.value.substring(0, term.value.length - 1);
         }
         term.scrollTop = term.scrollHeight;
         event.preventDefault();
       } else if (event.which == 13) {
+        if ($scope.servermsg != 'run') {
+          event.preventDefault();
+          return;
+        }
         term.value += '\n';
         var stdinData = term.value.substr(termStdinStart);
         termStdinStart = term.value.length;
-        // TODO: upload stdinData
+        if (socket.readyState == 1) {
+          socket.send(JSON.stringify({type: 'stdin', stdin: stdinData}));
+        }
         term.scrollTop = term.scrollHeight;
         event.preventDefault();
       }
     });
     $('#terminal').keypress(function(event) {
       if (event.which > 31 && event.which < 127) {
+        if ($scope.servermsg != 'run') {
+          event.preventDefault();
+          return;
+        }
         term.value += String.fromCharCode(event.which);
         term.scrollTop = term.scrollHeight;
         event.preventDefault();

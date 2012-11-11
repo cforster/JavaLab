@@ -108,6 +108,8 @@
 
     .monospace-textarea {
       font-family: monospace;
+      font-size: 12px;
+      line-height: 14px;
       resize: none;
       height: 100%;
       width: 100%;
@@ -133,8 +135,12 @@
          ng-class="{'alert-error': servermsg == 'disconnected', 'alert-success': servermsg != 'disconnected'}"
          class="alert" ng-bind="servermsg"></div>
     <div id="header-buttons" class="btn-group">
-      <button id="run-button" class="btn">Run</button>
-      <button id="stop-button" class="btn disabled">Stop</button>
+      <button id="run-button" class="btn"
+              ng-class="{'disabled': servermsg == 'disconnected'}"
+              ng-click="run()">Run</button>
+      <button id="stop-button" class="btn"
+              ng-class="{'disabled': servermsg != 'run'}"
+              ng-click="stop()">Stop</button>
     </div>
   </div>
 
@@ -172,10 +178,11 @@
     </div>
   </div>
 
+  <!-- TODO: make footer resizable by user -->
   <div id="footer">
     <div class="tabbable tabs-left"
 	 style="height: 100%">
-      <ul class="nav nav-tabs" style="height: 100%">
+      <ul class="nav nav-tabs" style="height: 100%" id="footertabs">
         <li class="active">
           <a href="#errors-tab" data-toggle="tab">Errors</a>
         </li>
