@@ -2,12 +2,13 @@ function LabCtrl($scope) {
   // TODO: implement user+lab selection over websocket
   $scope.user = 'matt';
   $scope.lab = 'arrays2d';
-  $scope.servermsg = "disconnected";
+  $scope.servermsg = 'disconnected';
 
   var socket = new WebSocket('ws://' + document.location.host + '/labserver');
   socket.onopen = function(event) {
     $scope.$apply(function() {
-      $scope.servermsg = "idle";
+      $scope.editor.setReadOnly(false);
+      $scope.servermsg = 'idle';
       socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
       socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
     });
@@ -36,8 +37,6 @@ function LabCtrl($scope) {
         if ($scope.activePart) {
           var activePartIndex = r.labParts.indexOf($scope.activePart.name);
           if (activePartIndex != -1) {
-            // TODO: don't reload our sharejs doc if our active part
-            // didn't really change
             $scope.switchPart($scope.parts[activePartIndex]);
           } else {
             $scope.switchPart($scope.parts[0] || null);
@@ -60,8 +59,8 @@ function LabCtrl($scope) {
   }
   socket.onerror = socket.onclose = function(event) {
     $scope.$apply(function() {
-      $scope.servermsg = "disconnected";
-      // TODO: disable doc editing when disconnected
+      $scope.servermsg = 'disconnected';
+      $scope.editor.setReadOnly(true);
     });
   }
 
@@ -76,6 +75,8 @@ function LabCtrl($scope) {
   $scope.parts = [];
   $scope.activePart = null;
   $scope.switchPart = function(part) {
+    if (socket.readyState != 1) return;
+    var lastActivePart = $scope.activePart;
     $scope.activePart = part;
     if (part == null) {
       if (editorDoc) {
@@ -85,6 +86,8 @@ function LabCtrl($scope) {
         editorDoc = null;
       }
     } else {
+      if (editorDoc && lastActivePart && lastActivePart.name == part.name)
+        return;
       function openDoc() {
         sharejs.open(
           $scope.user + ':' + $scope.lab + ':' + part.name,
@@ -108,6 +111,7 @@ function LabCtrl($scope) {
     }
   }
   $scope.removePart = function(part) {
+    if (socket.readyState != 1) return;
     socket.send(JSON.stringify({type: 'deleteLabPart', partName: part.name}));
     var i = $scope.parts.indexOf(part);
     $scope.parts.splice(i, 1);
@@ -117,6 +121,7 @@ function LabCtrl($scope) {
     }
   }
   $scope.newPart = function() {
+    if (socket.readyState != 1) return;
     if (newPartForm.$invalid || !$scope.newPartName)
       return;
 
@@ -149,9 +154,9 @@ function LabCtrl($scope) {
   }
 
   $scope.initEditor = function() {
-    $scope.editor = ace.edit("editor");
-    $scope.editor.setTheme("ace/theme/chrome");
-    $scope.editor.getSession().setMode("ace/mode/java");
+    $scope.editor = ace.edit('editor');
+    $scope.editor.setTheme('ace/theme/chrome');
+    $scope.editor.getSession().setMode('ace/mode/java');
     $scope.editor.setPrintMarginColumn(100);
     $scope.editor.getSession().setUseSoftTabs(true);
     $scope.editor.getSession().setTabSize(2);

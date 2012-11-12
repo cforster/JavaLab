@@ -62,12 +62,19 @@ function getClassName(src) {
 var nextId = 0;
 function JavaRunner(callback) {
   this.id = nextId++;
+  this.state = 'idle';
   this.callback = callback;
   this.dir = path.join(DATA_PATH, String(this.id));
   this.srcPath = null;
   this.className = null;
   this.java = null;
   this.intervalId = null;
+}
+
+JavaRunner.prototype.setState = function(state) {
+  util.log(this.id + ' enters state ' + state);
+  this.state = state;
+  this.callback({state: state});
 }
 
 JavaRunner.prototype.killJavaProcess = function() {
@@ -83,26 +90,24 @@ JavaRunner.prototype.killJavaProcess = function() {
 
 JavaRunner.prototype.compileRun = function(src) {
   var self = this;
-  util.log(self.id + ' compile start');
+  self.setState('compile');
   self.killJavaProcess();
   self.className = getClassName(src);
   if (!self.className) {
+    self.setState('idle');
     return self.callback(
-      {state: 'idle',
-       compileErrors: [
+      {compileErrors: [
          {line: 1,
           col: 0,
           text: 'failed to find public class name',
           detail: 'Failed to find public class name. Code must contain ' +
           'exactly one public class with a main method.'}]});
   }
-  self.callback({state: 'compile'});
   self.srcPath = path.join(self.dir, self.className + '.java');
   self.compile(src, function(result) {
     util.log(self.id + ' compile done (error ' + result.code + ')');
     if (result.code == 0) {
-      util.log(self.id + ' run start');
-      self.callback({state: 'run'});
+      self.setState('run');
       self.java = child_process.spawn('java',
 				      ['-Djava.security.manager',
 				       '-Djava.security.policy==' + POLICY_FILE,
@@ -122,8 +127,9 @@ JavaRunner.prototype.compileRun = function(src) {
 	  clearInterval(self.intervalId);
 	  self.intervalId = null;
 	}
-        // TODO: don't send this down if a new compile is in progress
-        self.callback({state: 'idle'});
+        if (self.state != 'compile') {
+          self.setState('idle');
+        }
       });
       self.intervalId = setInterval(function() {
 	if (self.java) {
@@ -141,7 +147,8 @@ JavaRunner.prototype.compileRun = function(src) {
       }, MAX_JAVA_CPU_SECONDS * 100);
     } else {
       var errors = parseJavacErrors(self.srcPath, result.stderr);
-      return self.callback({state: 'idle', compileErrors: errors});
+      self.setState('idle');
+      return self.callback({compileErrors: errors});
     }
   });
 }
@@ -152,7 +159,7 @@ JavaRunner.prototype.stdin = function(stdin) {
 
 JavaRunner.prototype.stop = function() {
   this.killJavaProcess();
-  this.callback({state: 'idle'});
+  this.setState('idle');
 }
 
 // TODO: correct javascript way to make private functions private?

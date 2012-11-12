@@ -4,6 +4,13 @@ var ws = require('ws');
 var javarunner = require('./javarunner');
 var labdb = require('./labdb');
 
+var MAIN_BOILERPLATE =
+  "public class Main {\n" +
+  "  public static void main(String[] args) {\n" +
+  "    \n" +
+  "  }\n" +
+  "}\n";
+
 exports.attach = function(options) {
 }
 
@@ -79,7 +86,10 @@ function initServer(server) {
           labdb.updateUserLab(user, lab, labInfo.labParts, function(e) {
             if (e) return sendError('Failed to update user lab', e);
           });
-          // TODO: pre-populate sharejs doc with main() boilerplate?
+          labdb.populateLabPart(
+            user, lab, req.partName, MAIN_BOILERPLATE, function(e) {
+              if (e) return sendError('Failed to populate new lab part', e);
+            });
           for (var i = 0; i < userSockets[user].length; i++) {
             if (userSockets[user][i] != sockFuncs) {
               userSockets[user][i].updateLabParts(lab, labInfo.labParts);

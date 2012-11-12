@@ -68,26 +68,24 @@ function createUserLab(user, labName, labParts, callback) {
   });
 }
 
-function populateDocs(user, labName, labParts, callback) {
-  async.forEach(labParts, function(part, done) {
-    var docName = user + ':' + labName + ':' + part.name;
-    shareClient.open(
-      docName,
-      'text', 
-      'http://localhost:' + app.config.get('httpPort') + '/channel',
-      function(e, doc) {
-        if (e) return done(e);
-        if (!doc.getText()) {
-          doc.insert(0, String(part.text), function(e, appliedOp) {
-            doc.close();
-            return done(e);
-          });
-        } else {
+exports.populateLabPart = function(user, labName, partName, src, callback) {
+  var docName = user + ':' + labName + ':' + partName;
+  shareClient.open(
+    docName,
+    'text', 
+    'http://localhost:' + app.config.get('httpPort') + '/channel',
+    function(e, doc) {
+      if (e) return callback(e);
+      if (!doc.getText()) {
+        doc.insert(0, String(src), function(e, appliedOp) {
           doc.close();
-          return done();
-        }
-      });
-  }, callback);
+          return callback(e);
+        });
+      } else {
+        doc.close();
+        return callback();
+      }
+    });
 }
 
 exports.getOrCreateUserLab = function(user, labName, callback) {
@@ -104,7 +102,9 @@ exports.getOrCreateUserLab = function(user, labName, callback) {
       }
       createUserLab(user, labName, partNames, function(e) {
         if (e) return callback(e);     
-        populateDocs(user, labName, labPartData, function(e) {
+        async.forEach(labPartData, function(part, done) {
+          exports.populateLabPart(user, labName, part.name, part.text, done);
+        }, function(e) {
           if (e) return callback(e);
           readUserLab(user, labName, function(e, item) {
             if (e) return callback(e);
