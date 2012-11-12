@@ -214,5 +214,32 @@
       </div>
     </div>
   </div>
+
+  <div id="loginModal" class="modal hide fade" role="dialog">
+    <div class="modal-header">
+      <h3>JavaLab Login</h3>
+    </div>
+    <div class="modal-body">
+      <form name="loginForm" class="form-horizontal" ng-submit="login()">
+        <div class="control-group">
+          <label class="control-label" for="inputUser">User or group</label>
+          <div class="controls">
+            <input type="text" id="inputUser" placeholder="User or group"
+                   ng-model="user"></input>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="inputLab">Lab</label>
+          <div class="controls">
+            <select id="inputLab" ng-model="lab"
+                    ng-options="lab for lab in labs"></select>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" ng-click="login()">Login</button>
+    </div>
+  </div>
 </body>
 </html>

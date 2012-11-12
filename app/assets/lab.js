@@ -1,16 +1,13 @@
 function LabCtrl($scope) {
-  // TODO: implement user+lab selection over websocket
-  $scope.user = 'matt';
-  $scope.lab = 'arrays2d';
+  $scope.user = '';
+  $scope.labs = ['arrays2d'];
+  $scope.lab = $scope.labs[0];
   $scope.servermsg = 'disconnected';
 
   var socket = new WebSocket('ws://' + document.location.host + '/labserver');
   socket.onopen = function(event) {
     $scope.$apply(function() {
-      $scope.editor.setReadOnly(false);
       $scope.servermsg = 'idle';
-      socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
-      socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
     });
   }
   socket.onmessage = function(event) {
@@ -75,7 +72,7 @@ function LabCtrl($scope) {
   $scope.parts = [];
   $scope.activePart = null;
   $scope.switchPart = function(part) {
-    if (socket.readyState != 1) return;
+    if (!$scope.user || socket.readyState != 1) return;
     var lastActivePart = $scope.activePart;
     $scope.activePart = part;
     if (part == null) {
@@ -89,6 +86,7 @@ function LabCtrl($scope) {
       if (editorDoc && lastActivePart && lastActivePart.name == part.name)
         return;
       function openDoc() {
+        $scope.editor.setValue('Loading...');
         sharejs.open(
           $scope.user + ':' + $scope.lab + ':' + part.name,
           'text',
@@ -98,10 +96,12 @@ function LabCtrl($scope) {
             doc.attach_ace($scope.editor);
             $scope.editor.gotoLine(1, 0, false);
             $scope.editor.scrollToRow(0);
+            $scope.editor.setReadOnly(false);
           });
       }
       if (editorDoc) {
         editorDoc.detach_ace();
+        $scope.editor.setReadOnly(true);
         $scope.editor.setValue('Loading...');
         editorDoc.close(openDoc);
         editorDoc = null;
@@ -111,7 +111,7 @@ function LabCtrl($scope) {
     }
   }
   $scope.removePart = function(part) {
-    if (socket.readyState != 1) return;
+    if (!$scope.user || socket.readyState != 1) return;
     socket.send(JSON.stringify({type: 'deleteLabPart', partName: part.name}));
     var i = $scope.parts.indexOf(part);
     $scope.parts.splice(i, 1);
@@ -121,7 +121,7 @@ function LabCtrl($scope) {
     }
   }
   $scope.newPart = function() {
-    if (socket.readyState != 1) return;
+    if (!$scope.user || socket.readyState != 1) return;
     if (newPartForm.$invalid || !$scope.newPartName)
       return;
 
@@ -142,14 +142,20 @@ function LabCtrl($scope) {
     $scope.switchPart(newPart);
   }
 
+  $scope.login = function() {
+    socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
+    socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+    $('#loginModal').modal('hide');
+  }
+
   $scope.run = function() {
-    if (socket.readyState != 1) return;
+    if (!$scope.user || socket.readyState != 1) return;
     var src = $scope.editor.getValue();
     socket.send(JSON.stringify({type: 'compileRun', src: src}));
   }
 
   $scope.stop = function() {
-    if (socket.readyState != 1) return;
+    if (!$scope.user || socket.readyState != 1) return;
     socket.send(JSON.stringify({type: 'stop'}));
   }
 
@@ -161,6 +167,7 @@ function LabCtrl($scope) {
     $scope.editor.getSession().setUseSoftTabs(true);
     $scope.editor.getSession().setTabSize(2);
     $scope.editor.setValue('No part loaded');
+    $scope.editor.setReadOnly(true);
   }
 
   var termStdinStart = 0;
@@ -187,6 +194,7 @@ function LabCtrl($scope) {
     clearTerm();
     var term = $('#terminal')[0];
     $('#terminal').keydown(function(event) {
+      // TODO: handle delete character, not just backspace
       if (event.which == 8) {
         if ($scope.servermsg != 'run') {
           event.preventDefault();
@@ -228,3 +236,7 @@ function LabCtrl($scope) {
     });
   }
 }
+
+$(window).load(function() {
+  $('#loginModal').modal();
+});
