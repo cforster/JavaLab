@@ -5,7 +5,6 @@ var fs = require('fs');
 var path = require('path');
 var shareClient = require('share').client;
 var st = require('st');
-var url = require('url');
 
 var labserver = require('./labserver');
 
