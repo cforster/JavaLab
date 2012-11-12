@@ -79,18 +79,22 @@ function LabCtrl($scope) {
   $scope.activePart = null;
   $scope.switchPart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
-    var lastActivePart = $scope.activePart;
+    if (part && editorDoc && $scope.activePart &&
+        $scope.activePart.name == part.name) {
+      return;
+    }
+    $scope.errors = [];
+    $scope.selectedError = null;
     $scope.activePart = part;
     if (part == null) {
       if (editorDoc) {
         editorDoc.detach_ace();
+        $scope.editor.setReadOnly(true);
         $scope.editor.setValue('No part selected');
         editorDoc.close();
         editorDoc = null;
       }
     } else {
-      if (editorDoc && lastActivePart && lastActivePart.name == part.name)
-        return;
       function openDoc() {
         $scope.editor.setValue('Loading...');
         sharejs.open(
