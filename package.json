@@ -5,12 +5,10 @@
   "dependencies": {
     "async": ">= 0.1",
     "browserchannel": ">= 0.4",
-    "connect": ">= 2.6",
     "flatiron": ">= 0.2.8",
     "mongodb": ">= 1.1",
     "share": "git://github.com/josephg/ShareJS.git",
     "st": ">= 0.0.11",
-    "swig": ">= 0.13",
     "union": "git://github.com/framp/union.git",
     "ws": ">= 0.4"
   },

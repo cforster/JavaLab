@@ -3,8 +3,8 @@ var fs = require('fs');
 var path = require('path');
 var util = require('util');
 
-var DATA_PATH = '/tmp/javaplayserver';
-var POLICY_FILE = '/tmp/javaplayserverpolicy';
+var DATA_PATH = '/tmp/javarunner';
+var POLICY_FILE = '/tmp/javarunnerpolicy';
 var PROC_CPU_HZ = 100;  // units in /proc/*/stat, depends on kernel setting
 
 // Java process limits, to prevent abuse

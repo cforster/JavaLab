@@ -2,15 +2,15 @@
 <html ng-app>
 <head>
   <title>Java Lab</title>
-  <link href="/assets/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <link href="assets/bootstrap/css/bootstrap.css" rel="stylesheet">
   <script src="http://code.jquery.com/jquery-latest.js"></script>
-  <script src="/assets/bootstrap/js/bootstrap.min.js"></script>
+  <script src="assets/bootstrap/js/bootstrap.min.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.2/angular.min.js"></script>
-  <script src="/assets/ace/ace.js"></script>
+  <script src="assets/ace/ace.js"></script>
   <script src="/channeldist/bcsocket-uncompressed.js"></script>
   <script src="/share/share.uncompressed.js"></script>
   <script src="/share/ace.js"></script>
-  <script src="/assets/lab.js"></script>
+  <script src="assets/lab.js"></script>
   <style type="text/css">
     html, body {
       overflow: hidden;
@@ -139,13 +139,13 @@
 
     .nav-list > .active > a > [class^="icon-"],
     .nav-list > .active > a > [class*=" icon-"] {
-      background-image: url("/assets/bootstrap/img/glyphicons-halflings.png");
+      background-image: url("assets/bootstrap/img/glyphicons-halflings.png");
     }
   </style>
 </head>
 <body ng-controller="LabCtrl">
   <div id="header">
-    <img src="javalablogo.gif"
+    <img src="assets/javalablogo.gif"
 	 style="margin-top: 4px; margin-left: 4px; float: left" />
     <div id="servermsg"
          ng-class="{'alert-error': servermsg == 'disconnected', 'alert-success': servermsg != 'disconnected'}"
