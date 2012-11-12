@@ -1,7 +1,7 @@
 function LabCtrl($scope) {
   $scope.user = '';
-  $scope.labs = ['arrays2d'];
-  $scope.lab = $scope.labs[0];
+  $scope.labs = [];
+  $scope.lab = null;
   $scope.servermsg = 'disconnected';
 
   var socket = new WebSocket('ws://' + document.location.host + '/labserver');
@@ -24,6 +24,12 @@ function LabCtrl($scope) {
           $('#footertabs a[href="#output-tab"]').tab('show');
           $scope.errors = [];
           $scope.selectedError = null
+        }
+        break;
+      case 'updateLabs':
+        $scope.labs = r.labs;
+        if (!$scope.lab) {
+          $scope.lab = $scope.labs[0] || null;
         }
         break;
       case 'updateLabParts':
@@ -142,7 +148,12 @@ function LabCtrl($scope) {
     $scope.switchPart(newPart);
   }
 
+  $scope.switchLab = function() {
+    $('#loginModal').modal();
+  }
+
   $scope.login = function() {
+    $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
     socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
     $('#loginModal').modal('hide');

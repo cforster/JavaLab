@@ -129,3 +129,10 @@ exports.updateUserLab = function(user, labName, labParts, callback) {
       });
   });
 }
+
+exports.listLabs = function(callback) {
+  fs.readdir('labs', function(e, files) {
+    if (e) return callback(e);
+    return callback(null, files);
+  });
+}

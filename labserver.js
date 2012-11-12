@@ -41,6 +41,9 @@ function initServer(server) {
       'updateLabParts': function(lab, labParts) {
         sock.send(JSON.stringify(
           {type: 'updateLabParts', lab: lab, labParts: labParts}));
+      },
+      'updateLabs': function(labs) {
+        sock.send(JSON.stringify({type: 'updateLabs', labs: labs}));
       }
     };
 
@@ -63,7 +66,15 @@ function initServer(server) {
 
       switch (req.type) {
       case 'setUser':
-        if (user) return sendError('User has already been set');
+        if (user) {
+          var userSocketList = userSockets[user];
+          if (userSocketList) {
+            var pos = userSocketList.indexOf(sockFuncs);
+            if (pos != -1) {
+              userSocketList.splice(pos, 1);
+            }
+          }
+        }
         user = req.user;
         if (user in userSockets) {
           userSockets[user].push(sockFuncs);
@@ -136,6 +147,11 @@ function initServer(server) {
           userSocketList.splice(pos, 1);
         }
       }
+    });
+
+    labdb.listLabs(function(e, labs) {
+      if (e) return sendError('Failed to list labs');
+      sockFuncs.updateLabs(labs);
     });
   });
 }

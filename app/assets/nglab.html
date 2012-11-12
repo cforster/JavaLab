@@ -40,6 +40,19 @@
       float: right;
     }
 
+    #login-info {
+      margin-top: 10px;
+      margin-right: 8px;
+      height: 30px;
+      float: right;
+    }
+
+    .login-span {
+      margin-top: 6px;
+      margin-left: 0px;
+      margin-right: 8px;
+    }
+
     #content {
       position: absolute;
       top: 48px;
@@ -141,6 +154,12 @@
       <button id="stop-button" class="btn"
               ng-class="{'disabled': servermsg != 'run'}"
               ng-click="stop()">Stop</button>
+    </div>
+    <div id="login-info">
+      <span class="login-span"><i class="icon-folder-open"></i>{{ lab }}</span>
+      <span class="login-span"><i class="icon-user"></i>{{ user }}</span>
+      <button id="switch-lab-button" class="btn"
+              ng-click="switchLab()">Switch Lab</button>
     </div>
   </div>
 

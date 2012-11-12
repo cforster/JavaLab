@@ -1,0 +1,8 @@
+{
+  "title": "testlab",
+  "description": "testlab description",
+  "parts": [
+    "Input",
+    "OOM"
+  ]
+}
