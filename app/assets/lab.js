@@ -35,10 +35,10 @@ function LabCtrl($scope) {
       case 'updateLabParts':
         $scope.parts = [];
         for (var i = 0; i < r.labParts.length; i++) {
-          $scope.parts.push({name: r.labParts[i]});
+          $scope.parts.push(r.labParts[i]);
         }
         if ($scope.activePart) {
-          var activePartIndex = r.labParts.indexOf($scope.activePart.name);
+          var activePartIndex = r.labParts.indexOf($scope.activePart);
           if (activePartIndex != -1) {
             $scope.switchPart($scope.parts[activePartIndex]);
           } else {
@@ -73,6 +73,18 @@ function LabCtrl($scope) {
     $scope.editor.gotoLine($scope.selectedError.line, $scope.selectedError.col);
   }
 
+  $scope.newPartNameChanged = function() {
+    if (!$scope.newPartPattern.exec($scope.newPartName)) {
+      $scope.newPartForm.$invalid = true;
+      return;
+    }
+    if ($scope.parts.indexOf($scope.newPartName) != -1) {
+      $scope.newPartForm.$invalid = true;
+      return;
+    }
+    $scope.newPartForm.$invalid = false;
+  }
+
   var editorDoc = null;
   $scope.newPartPattern = /^[A-Za-z0-9]*$/;
   $scope.parts = [];
@@ -80,7 +92,7 @@ function LabCtrl($scope) {
   $scope.switchPart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
     if (part && editorDoc && $scope.activePart &&
-        $scope.activePart.name == part.name) {
+        $scope.activePart == part) {
       return;
     }
     $scope.errors = [];
@@ -98,7 +110,7 @@ function LabCtrl($scope) {
       function openDoc() {
         $scope.editor.setValue('Loading...');
         sharejs.open(
-          $scope.user + ':' + $scope.lab + ':' + part.name,
+          $scope.user + ':' + $scope.lab + ':' + part,
           'text',
           function(e, doc) {
             if (e) return console.log(e);
@@ -122,7 +134,7 @@ function LabCtrl($scope) {
   }
   $scope.removePart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
-    socket.send(JSON.stringify({type: 'deleteLabPart', partName: part.name}));
+    socket.send(JSON.stringify({type: 'deleteLabPart', partName: part}));
     var i = $scope.parts.indexOf(part);
     $scope.parts.splice(i, 1);
     if ($scope.activePart == part) {
@@ -131,13 +143,14 @@ function LabCtrl($scope) {
     }
   }
   $scope.newPart = function() {
+    $scope.newPartNameChanged();
     if (!$scope.user || socket.readyState != 1) return;
-    if (newPartForm.$invalid || !$scope.newPartName)
+    if ($scope.newPartForm.$invalid || !$scope.newPartName)
       return;
 
     var unique = true;
     angular.forEach($scope.parts, function(part) {
-      if (part.name == $scope.newPartName) unique = false;
+      if (part == $scope.newPartName) unique = false;
     });
     if (!unique) {
       $scope.newPartName = '';
@@ -146,7 +159,7 @@ function LabCtrl($scope) {
 
     socket.send(JSON.stringify(
       {type: 'addLabPart', partName: $scope.newPartName}));
-    var newPart = {name: $scope.newPartName};
+    var newPart = $scope.newPartName;
     $scope.newPartName = '';
     $scope.parts.push(newPart);
     $scope.switchPart(newPart);

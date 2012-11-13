@@ -175,7 +175,7 @@
           <a href="#" ng-click="switchPart(part)"
              style="margin-right: -40px">
             <i class="icon-remove" ng-click="removePart(part)"></i>
-            {{part.name}}
+            {{part}}
           </a>
         </li>
       </ul>
@@ -184,7 +184,7 @@
              ng-class="{error: newPartForm.$invalid}">
           <div class="input-append" style="margin-left: 4px">
             <input type="text" class="input-medium"
-                   ng-model="newPartName" ng-pattern="newPartPattern"
+                   ng-model="newPartName" ng-change="newPartNameChanged()"
 	           placeholder="New lab part">
             <button class="btn" ng-click="newPart()"
                     ng-class="{disabled: newPartForm.$invalid || !newPartName}">
