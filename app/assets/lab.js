@@ -246,6 +246,9 @@ function LabCtrl($scope) {
         event.preventDefault();
       }
     });
+    $('#terminal').bind('cut', function(event) {
+      event.preventDefault();
+    });
     $('#terminal').bind('paste', function(event) {
       event.preventDefault();
     });
