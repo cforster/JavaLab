@@ -97,8 +97,9 @@ function initServer(server) {
           labdb.updateUserLab(user, lab, labInfo.labParts, function(e) {
             if (e) return sendError('Failed to update user lab', e);
           });
+          var mainBoilerplate = MAIN_BOILERPLATE.replace('Main', req.partName);
           labdb.populateLabPart(
-            user, lab, req.partName, MAIN_BOILERPLATE, function(e) {
+            user, lab, req.partName, mainBoilerplate, function(e) {
               if (e) return sendError('Failed to populate new lab part', e);
             });
           for (var i = 0; i < userSockets[user].length; i++) {
