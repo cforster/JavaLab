@@ -51,7 +51,7 @@ function parseJavacErrors(srcPath, stderr) {
 }
 
 function getClassName(src) {
-  var match = src.match(/public\s+class\s+(\S+)\s*{/m);
+  var match = src.match(/public\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s*{/m);
   if (match) {
     return match[1];
   } else {
