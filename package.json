@@ -3,17 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
-    "async": ">= 0.1",
-    "browserchannel": ">= 0.4",
-    "flatiron": ">= 0.2.8",
-    "mongodb": ">= 1.1",
-    "share": "git://github.com/josephg/ShareJS.git",
-    "st": ">= 0.0.11",
-    "union": "git://github.com/framp/union.git",
-    "ws": ">= 0.4"
+    "async": "*",
+    "connect": "*",
+    "mongodb": "*",
+    "share": "git://github.com/obijywk/ShareJS.git",
+    "ws": "*"
   },
   "scripts": {
     "start": "node app.js"
+  },
+  "config": {
+    "port": "80"
   },
   "repository": {
     "type": "git",

@@ -11,20 +11,16 @@ var MAIN_BOILERPLATE =
   "  }\n" +
   "}\n";
 
-exports.attach = function(options) {
-}
-
-exports.init = function(done) {
-  var app = this;
-  initServer(app.server);
-  done();
-}
-
+var nextId = 0;
 var userSockets = {};
 
-function initServer(server) {
-  var wsServer = new ws.Server({server: server, path: '/labserver'});
-  wsServer.on('connection', function(sock) {
+exports.attach = function(server) {
+  var options = {server: server, path: '/labserver'};
+  var wss = new ws.Server(options);
+  wss.on('connection', function(sock) {
+    var id = nextId++;
+    util.log('labserver #' + id + ' connected');
+
     var user = '';
     var lab = '';
 
@@ -139,6 +135,7 @@ function initServer(server) {
     });
 
     sock.on('close', function() {
+      util.log('labserver #' + id + ' closed');
       javaRunner.stop();
       javaRunner.cleanup();
       var userSocketList = userSockets[user];

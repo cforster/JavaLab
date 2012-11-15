@@ -61,6 +61,7 @@ function LabCtrl($scope) {
     });
   }
   socket.onerror = socket.onclose = function(event) {
+    console.log(event);
     $scope.$apply(function() {
       $scope.servermsg = 'disconnected';
       $scope.editor.setReadOnly(true);
@@ -85,53 +86,55 @@ function LabCtrl($scope) {
     $scope.newPartForm.$invalid = false;
   }
 
-  var editorDoc = null;
   $scope.newPartPattern = /^[A-Za-z0-9]*$/;
   $scope.parts = [];
   $scope.activePart = null;
+
+  var shareConnection = new sharejs.Connection(
+    'ws://' + document.location.host + '/shareserver');
+  var openDoc = null;
   $scope.switchPart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
-    if (part && editorDoc && $scope.activePart &&
+    if (part && openDoc && $scope.activePart &&
         $scope.activePart == part) {
       return;
     }
     $scope.errors = [];
     $scope.selectedError = null;
     $scope.activePart = part;
-    if (part == null) {
-      if (editorDoc) {
-        editorDoc.detach_ace();
-        $scope.editor.setReadOnly(true);
-        $scope.editor.setValue('No part selected');
-        editorDoc.close();
-        editorDoc = null;
-      }
+
+    if (openDoc) {
+      openDoc.detach_ace();
+      // TODO: closing sharejs docs prevents them from ever being re-opened
+      // revisit closing docs here if sharejs is fixed
+      openDoc = null;
+      $scope.editor.setReadOnly(true);
+    }
+
+    if (part != null) {
+      $scope.editor.setValue('Loading...');
+      shareConnection.open(
+        $scope.user + ':' + $scope.lab + ':' + part,
+        'text',
+        function(e, doc) {
+          if (e) return console.log(e);
+          if (doc.state != 'open')
+            console.log('Opened doc ' + doc.name + ' has state ' + doc.state);
+          if (part != $scope.activePart) {
+            // another doc became active while this doc was opening
+            return;
+          }
+          openDoc = doc;
+          doc.attach_ace($scope.editor);
+          $scope.editor.gotoLine(1, 0, false);
+          $scope.editor.scrollToRow(0);
+          $scope.editor.setReadOnly(false);
+        });
     } else {
-      function openDoc() {
-        $scope.editor.setValue('Loading...');
-        sharejs.open(
-          $scope.user + ':' + $scope.lab + ':' + part,
-          'text',
-          function(e, doc) {
-            if (e) return console.log(e);
-            editorDoc = doc;
-            doc.attach_ace($scope.editor);
-            $scope.editor.gotoLine(1, 0, false);
-            $scope.editor.scrollToRow(0);
-            $scope.editor.setReadOnly(false);
-          });
-      }
-      if (editorDoc) {
-        editorDoc.detach_ace();
-        $scope.editor.setReadOnly(true);
-        $scope.editor.setValue('Loading...');
-        editorDoc.close(openDoc);
-        editorDoc = null;
-      } else {
-        openDoc();
-      }
+      $scope.editor.setValue('No part selected');
     }
   }
+
   $scope.removePart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
     socket.send(JSON.stringify({type: 'deleteLabPart', partName: part}));
@@ -142,6 +145,7 @@ function LabCtrl($scope) {
       $scope.switchPart($scope.parts.length == 0 ? null : $scope.parts[i]);
     }
   }
+
   $scope.newPart = function() {
     $scope.newPartNameChanged();
     if (!$scope.user || socket.readyState != 1) return;
@@ -170,7 +174,6 @@ function LabCtrl($scope) {
   }
 
   $scope.login = function() {
-    $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
     socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
     $('#loginModal').modal('hide');

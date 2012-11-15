@@ -1,11 +1,9 @@
-var flatiron = require('flatiron');
-var app = flatiron.app;
-
 var async = require('async');
 var fs = require('fs');
 var mongo = require('mongodb');
 var path = require('path');
 var shareClient = require('share').client;
+var util = require('util');
 
 var mongoServer = new mongo.Server('localhost', 27017, {auto_reconnect: true});
 var mongoDb = new mongo.Db('javalab', mongoServer, {safe: true});
@@ -73,7 +71,8 @@ exports.populateLabPart = function(user, labName, partName, src, callback) {
   shareClient.open(
     docName,
     'text', 
-    'http://localhost:' + app.config.get('httpPort') + '/channel',
+    // TODO: use correct port number here, it may not be 80
+    'ws://localhost/shareserver',
     function(e, doc) {
       if (e) return callback(e);
       if (!doc.getText()) {
