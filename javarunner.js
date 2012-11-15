@@ -21,7 +21,7 @@ fs.mkdir(DATA_PATH, function(e) {
 
 function getCPUSeconds(pid, callback) {
   fs.readFile('/proc/' + pid + '/stat', function(e, data) {
-    if (e && e.code == 'ENOENT') callback(null);
+    if (e && (e.code == 'ENOENT' || e.code == 'ESRCH')) callback(null);
     if (e) throw e;
     var parts = data.toString().split(' ');
     var cpuTime = (Number(parts[13]) + Number(parts[14])) / PROC_CPU_HZ;
