@@ -225,48 +225,53 @@ function LabCtrl($scope) {
     clearTerm();
     var term = $('#terminal')[0];
     $('#terminal').keydown(function(event) {
-      // TODO: handle delete character, not just backspace
-      if (event.which == 8) {
+      handlers = {
+        8: function() {  // backspace
+          if (term.selectionStart <= termStdinStart) {
+            event.preventDefault();
+          }
+        },
+        46: function() {  // delete
+          if (term.selectionStart < termStdinStart) {
+            event.preventDefault();
+          }
+        },
+        13: function() {  // newline
+          if (term.selectionStart == term.value.length) {
+            term.value += '\n';
+            var stdinData = term.value.substr(termStdinStart);
+            termStdinStart = term.value.length;
+            if (socket.readyState == 1) {
+              socket.send(JSON.stringify({type: 'stdin', stdin: stdinData}));
+            }
+            term.scrollTop = term.scrollHeight;
+          }
+          event.preventDefault();
+        }
+      };
+      if (event.which in handlers) {
         if ($scope.servermsg != 'run') {
           event.preventDefault();
-          return;
+        } else {
+          handlers[event.which]();
         }
-        if (term.value.length > termStdinStart) {
-          term.value = term.value.substring(0, term.value.length - 1);
-        }
-        term.scrollTop = term.scrollHeight;
-        event.preventDefault();
-      } else if (event.which == 13) {
-        if ($scope.servermsg != 'run') {
-          event.preventDefault();
-          return;
-        }
-        term.value += '\n';
-        var stdinData = term.value.substr(termStdinStart);
-        termStdinStart = term.value.length;
-        if (socket.readyState == 1) {
-          socket.send(JSON.stringify({type: 'stdin', stdin: stdinData}));
-        }
-        term.scrollTop = term.scrollHeight;
-        event.preventDefault();
       }
     });
     $('#terminal').keypress(function(event) {
       if (event.which > 31 && event.which < 127) {
-        if ($scope.servermsg != 'run') {
+        if ($scope.servermsg != 'run' ||
+            term.selectionStart < termStdinStart) {
           event.preventDefault();
-          return;
         }
-        term.value += String.fromCharCode(event.which);
-        term.scrollTop = term.scrollHeight;
-        event.preventDefault();
       }
     });
     $('#terminal').bind('cut', function(event) {
-      event.preventDefault();
+      if (term.selectionStart < termStdinStart)
+        event.preventDefault();
     });
     $('#terminal').bind('paste', function(event) {
-      event.preventDefault();
+      if (term.selectionStart < termStdinStart)
+        event.preventDefault();
     });
   }
 }
