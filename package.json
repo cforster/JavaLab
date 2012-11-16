@@ -13,7 +13,9 @@
     "start": "node app.js"
   },
   "config": {
-    "port": "80"
+    "port": "80",
+    "mongoDbHost": "localhost",
+    "mongoDbPort": "27017"
   },
   "repository": {
     "type": "git",

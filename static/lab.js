@@ -161,12 +161,11 @@ function LabCtrl($scope) {
       return;
     }
 
-    socket.send(JSON.stringify(
-      {type: 'addLabPart', partName: $scope.newPartName}));
     var newPart = $scope.newPartName;
     $scope.newPartName = '';
     $scope.parts.push(newPart);
     $scope.switchPart(newPart);
+    socket.send(JSON.stringify({type: 'addLabPart', partName: newPart}));
   }
 
   $scope.switchLab = function() {

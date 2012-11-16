@@ -11,9 +11,11 @@ http_server.use = function() { server.use.apply(server, arguments); }
 
 require('./labserver').attach(http_server);
 
+var mongoDbHost = process.env.npm_package_config_mongoDbHost || 'localhost';
+var mongoDbPort = Number(process.env.npm_package_config_mongoDbPort) || 27017;
 var options = {
   staticpath: '/share',
-  db: {type: 'mongo'},
+  db: {type: 'mongo', hostname: mongoDbHost, port: mongoDbPort},
   browserChannel: null,
   websocket: {prefix: '/shareserver'}
 };

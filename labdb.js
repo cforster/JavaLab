@@ -5,8 +5,19 @@ var path = require('path');
 var shareClient = require('share').client;
 var util = require('util');
 
-var mongoServer = new mongo.Server('localhost', 27017, {auto_reconnect: true});
+var mongoDbHost = process.env.npm_package_config_mongoDbHost || 'localhost';
+var mongoDbPort = Number(process.env.npm_package_config_mongoDbPort) || 27017;
+var mongoServer = new mongo.Server(mongoDbHost, mongoDbPort,
+                                   {auto_reconnect: true});
 var mongoDb = new mongo.Db('javalab', mongoServer, {safe: true});
+
+var db = null;
+mongoDb.open(function(e, dbOpened) {
+  if (e) throw ('Failed to connect to MongoDB at ' +
+                mongoDbHost + ':' + mongoDbPort + '\n' + e);
+  util.log('Connected to MongoDB at ' + mongoDbHost + ':' + mongoDbPort);
+  db = dbOpened;
+});
 
 function readLab(labName, callback) {
   fs.readFile(path.join('labs', labName, 'lab.json'), function(e, data) {
@@ -29,62 +40,43 @@ function readLab(labName, callback) {
   });
 }
 
-function openUserLabs(callback) {
-  mongoDb.open(function(e, db) {
-    if (e) return callback(e);
-    db.collection('userlabs', function(e, collection) {
-      if (e) {
-        db.close();
-        return callback(e);
-      }
-      return callback(null, db, collection);
-    });
-  });
-}
-
 function readUserLab(user, labName, callback) {
-  openUserLabs(function(e, db, collection) {
+  db.collection('userlabs', function(e, collection) {
     if (e) return callback(e);
-    collection.findOne({user: user, labName: labName}, function(e, item) {
-      db.close();
-      if (e) return callback(e);
-      return callback(null, item);
-    });
+    collection.findOne({user: user, labName: labName}, callback);
   });
 }
 
 function createUserLab(user, labName, labParts, callback) {
-  openUserLabs(function(e, db, collection) {
+  db.collection('userlabs', function(e, collection) {
     if (e) return callback(e);
     collection.insert(
       {user: user, labName: labName, labParts: labParts},
       {safe: true},
       function(e, result) {
-        db.close();
         return callback(e);
       });
   });
 }
 
+var shareServerUrl =
+  'ws://localhost:' +
+  (process.env.npm_package_config_port || '80') +
+  '/shareserver';
 exports.populateLabPart = function(user, labName, partName, src, callback) {
   var docName = user + ':' + labName + ':' + partName;
-  shareClient.open(
-    docName,
-    'text', 
-    // TODO: use correct port number here, it may not be 80
-    'ws://localhost/shareserver',
-    function(e, doc) {
-      if (e) return callback(e);
-      if (!doc.getText()) {
-        doc.insert(0, String(src), function(e, appliedOp) {
-          doc.close();
-          return callback(e);
-        });
-      } else {
+  shareClient.open(docName, 'text', shareServerUrl, function(e, doc) {
+    if (e) return callback(e);
+    if (!doc.getText()) {
+      doc.insert(0, String(src), function(e, appliedOp) {
         doc.close();
-        return callback();
-      }
-    });
+        return callback(e);
+      });
+    } else {
+      doc.close();
+      return callback();
+    }
+  });
 }
 
 exports.getOrCreateUserLab = function(user, labName, callback) {
@@ -116,22 +108,18 @@ exports.getOrCreateUserLab = function(user, labName, callback) {
 }
 
 exports.updateUserLab = function(user, labName, labParts, callback) {
-  openUserLabs(function(e, db, collection) {
+  db.collection('userlabs', function(e, collection) {
     if (e) return callback(e);
     collection.update(
       {user: user, labName: labName},
       {$set: {labParts: labParts}},
       {safe: true},
       function(e, result) {
-        db.close();
         return callback(e);
       });
   });
 }
 
 exports.listLabs = function(callback) {
-  fs.readdir('labs', function(e, files) {
-    if (e) return callback(e);
-    return callback(null, files);
-  });
+  fs.readdir('labs', callback);
 }
