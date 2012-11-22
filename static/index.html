@@ -262,11 +262,11 @@
     </div>
     <div class="modal-body">
       <form name="loginForm" class="form-horizontal" ng-submit="login()">
-        <div class="control-group">
+        <div class="control-group" ng-class="{error: loginForm.$invalid}">
           <label class="control-label" for="inputUser">User or group</label>
           <div class="controls">
             <input type="text" id="inputUser" placeholder="User or group"
-                   ng-model="user"></input>
+                   ng-model="user" ng-pattern="/^\w+$/"></input>
           </div>
         </div>
         <div class="control-group">
@@ -279,7 +279,8 @@
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-primary" ng-click="login()">Login</button>
+      <button class="btn btn-primary" ng-click="login()"
+              ng-class="{disabled: loginForm.$invalid || !user}">Login</button>
     </div>
   </div>
 </body>

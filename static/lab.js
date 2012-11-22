@@ -172,14 +172,27 @@ function LabCtrl($scope) {
   }
 
   $scope.switchLab = function() {
+    $scope.lastUser = $scope.user;
     $('#loginModal').modal();
   }
 
   $scope.login = function() {
-    socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
-    socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+    if (!$scope.user) return;
     $('#loginModal').modal('hide');
   }
+
+  $('#loginModal').on('hidden', function() {
+    $scope.$apply(function() {
+      if (!$scope.user) {
+        if ($scope.lastUser) {
+          $scope.user = $scope.lastUser;
+        }
+        return;
+      }
+      socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
+      socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+    });
+  });
 
   $scope.run = function() {
     if (!$scope.user || socket.readyState != 1) return;
