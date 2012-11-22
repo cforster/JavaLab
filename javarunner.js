@@ -90,6 +90,7 @@ JavaRunner.prototype.killJavaProcess = function() {
 
 JavaRunner.prototype.compileRun = function(src) {
   var self = this;
+  if (self.state == 'compile') return;
   self.setState('compile');
   self.killJavaProcess();
   self.className = getClassName(src);
