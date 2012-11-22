@@ -71,7 +71,10 @@ function LabCtrl($scope) {
   $scope.errors = [];
   $scope.selectedError = null;
   $scope.onErrorSelect = function() {
-    $scope.editor.gotoLine($scope.selectedError.line, $scope.selectedError.col);
+    if ($scope.selectedError) {
+      $scope.editor.gotoLine($scope.selectedError.line,
+                             $scope.selectedError.col);
+    }
   }
 
   $scope.newPartNameChanged = function() {
@@ -273,8 +276,36 @@ function LabCtrl($scope) {
         event.preventDefault();
     });
   }
-}
 
-$(window).load(function() {
-  $('#loginModal').modal();
-});
+  $(window).load(function() {
+    // allow user to resize tabs
+    (function() {
+      var startY = null;
+      $('#footerhandle').mousedown(function(event) {
+        event.preventDefault();
+        startY = event.clientY;
+        $('html').addClass('ns-resize');
+      });
+      $(window).mousemove(function(event) {
+        if (startY) {
+          var delta = startY - event.clientY;
+          if (delta < 0 && $('#footer').height() < 150) return;
+          if (delta > 0 && $('#content').height() < 150) return;
+          $('#footer').css('height', '+=' + delta);
+          $('#content').css('bottom', '+=' + delta);
+          startY = event.clientY;
+          $scope.editor.resize(true);
+        }
+      });
+      $(window).mouseup(function(event) {
+        if (startY) {
+          startY = null;
+          $('html').removeClass('ns-resize');
+        }
+      });
+    }());
+
+    // show the login modal dialog on startup
+    $('#loginModal').modal();
+  });
+}

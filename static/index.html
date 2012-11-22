@@ -11,6 +11,10 @@
   <script src="share/ace.js"></script>
   <script src="lab.js"></script>
   <style type="text/css">
+    .ns-resize * {
+      cursor: ns-resize !important;
+    }
+
     html, body {
       overflow: hidden;
     }
@@ -73,6 +77,22 @@
       padding-left: 234px;
     }
 
+    #footerhandle {
+      height: 6px;
+      width: 100%;
+      position: relative;
+      cursor: ns-resize;
+    }
+
+    #resizehandleimg {
+      position: absolute;
+      left: 50%;
+      -moz-user-select: none; 
+      -khtml-user-select: none; 
+      -webkit-user-select: none; 
+      -o-user-select: none; 
+    }
+
     #editor {
       position: absolute;
       border: 1px solid #ddd;
@@ -84,12 +104,11 @@
 
     #errors-container {
       position: absolute;
-      height: 42%;
       width: auto;
-      margin-top: 4px;
       top: 0;
       left: 0;
       right: 0;
+      bottom: 94px;
     }
 
     #errors {
@@ -99,7 +118,7 @@
 
     #errordetail-container {
       position: absolute;
-      height: 42%;
+      height: 72px;
       width: auto;
       margin-right: 14px;
       margin-bottom: 20px;
@@ -112,7 +131,6 @@
       position: absolute;
       height: auto;
       width: auto;
-      margin-top: 4px;
       margin-bottom: 20px;
       margin-right: 14px;
       top: 0;
@@ -199,8 +217,10 @@
     </div>
   </div>
 
-  <!-- TODO: make footer resizable by user -->
   <div id="footer">
+    <div id="footerhandle">
+      <img id="resizehandleimg" src="resize_handle.png">
+    </div>
     <div class="tabbable tabs-left"
 	 style="height: 100%">
       <ul class="nav nav-tabs" style="height: 100%" id="footertabs">
