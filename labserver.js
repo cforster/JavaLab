@@ -147,6 +147,10 @@ exports.attach = function(server) {
       }
     });
 
+    sock.on('error', function(reason, errorCode) {
+      util.log('labserver #' + id + ' error ' + errorCode + ': ' + reason);
+    });
+
     labdb.listLabs(function(e, labs) {
       if (e) return sendError('Failed to list labs');
       sockFuncs.updateLabs(labs);
