@@ -149,6 +149,11 @@ function LabCtrl($scope) {
     }
   }
 
+  $scope.revertPart = function(part) {
+    if (!$scope.user || socket.readyState != 1) return;
+    socket.send(JSON.stringify({type: 'revertLabPart', partName: part}));
+  }
+
   $scope.newPart = function() {
     $scope.newPartNameChanged();
     if (!$scope.user || socket.readyState != 1) return;

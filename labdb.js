@@ -19,6 +19,10 @@ mongoDb.open(function(e, dbOpened) {
   db = dbOpened;
 });
 
+exports.readLabPart = function(labName, partName, callback) {
+  fs.readFile(path.join('labs', labName, partName), callback);
+}
+
 function readLab(labName, callback) {
   fs.readFile(path.join('labs', labName, 'lab.json'), function(e, data) {
     if (e) return callback(e);
@@ -28,12 +32,12 @@ function readLab(labName, callback) {
       return callback(e);
     }
     async.map(lab.parts, function(partFile, done) {
-      fs.readFile(path.join('labs', labName, partFile), done);
+      exports.readLabPart(labName, partFile, done);
     }, function(e, results) {
       if (e) return callback(e);
       var parts = [];
       for (var i = 0; i < results.length; i++) {
-        parts.push({'name': lab.parts[i], 'text': results[i]});
+        parts.push({name: lab.parts[i], text: results[i]});
       }
       return callback(null, parts);
     });
@@ -63,11 +67,18 @@ var shareServerUrl =
   'ws://localhost:' +
   (process.env.npm_package_config_port || '80') +
   '/shareserver';
-exports.populateLabPart = function(user, labName, partName, src, callback) {
+exports.populateLabPart = function(user, labName, partName, src, force, callback) {
   var docName = user + ':' + labName + ':' + partName;
   shareClient.open(docName, 'text', shareServerUrl, function(e, doc) {
     if (e) return callback(e);
-    if (!doc.getText()) {
+    var text = doc.getText();
+    if (force && text) {
+      doc.del(0, text.length, function(e, appliedOp) {
+        if (e) util.log('populateLabPart delete text failed: ' + e);
+      });
+      text = doc.getText();
+    }
+    if (!text) {
       doc.insert(0, String(src), function(e, appliedOp) {
         doc.close();
         return callback(e);
@@ -94,7 +105,8 @@ exports.getOrCreateUserLab = function(user, labName, callback) {
       createUserLab(user, labName, partNames, function(e) {
         if (e) return callback(e);     
         async.forEach(labPartData, function(part, done) {
-          exports.populateLabPart(user, labName, part.name, part.text, done);
+          exports.populateLabPart(
+            user, labName, part.name, part.text, false, done);
         }, function(e) {
           if (e) return callback(e);
           readUserLab(user, labName, function(e, item) {

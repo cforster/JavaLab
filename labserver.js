@@ -95,7 +95,7 @@ exports.attach = function(server) {
           });
           var mainBoilerplate = MAIN_BOILERPLATE.replace('Main', req.partName);
           labdb.populateLabPart(
-            user, lab, req.partName, mainBoilerplate, function(e) {
+            user, lab, req.partName, mainBoilerplate, false, function(e) {
               if (e) return sendError('Failed to populate new lab part', e);
             });
           for (var i = 0; i < userSockets[user].length; i++) {
@@ -120,6 +120,17 @@ exports.attach = function(server) {
               userSockets[user][i].updateLabParts(lab, labInfo.labParts);
             }
           }
+        });
+        break;
+      case 'revertLabPart':
+        if (!lab) return sendError('Lab has not been set');
+        labdb.readLabPart(lab, req.partName, function(e, src) {
+          if (e) return sendError('Failed to read lab part for lab ' +
+                                  lab + ' part ' + req.partName, e);
+          labdb.populateLabPart(
+            user, lab, req.partName, src, true, function(e) {
+              if (e) return sendError('Failed to populate lab part', e);
+            });            
         });
         break;
       case 'compileRun':
