@@ -158,6 +158,10 @@
     .nav-list > .active > a > [class*=" icon-"] {
       background-image: url("bootstrap/img/glyphicons-halflings.png");
     }
+
+    hide {
+      visibility: hidden;
+    }
   </style>
 </head>
 <body ng-controller="LabCtrl">
@@ -188,12 +192,15 @@
 	 style="width: 240px; right: 240px; float: left; position: relative">
       <ul class="nav nav-list">
 	<li class="nav-header">Lab Parts</li>
-	<li ng-repeat="part in parts" ng-class="{active: part == activePart}">
+	<li ng-repeat="part in parts"
+            ng-class="{active: part.name == activePart}">
           <a href="#" ng-click="switchPart(part)"
              style="margin-right: -40px">
-            <i class="icon-remove" ng-click="removePart(part)"></i>
-            <i class="icon-repeat" ng-click="revertPart(part)"></i>
-            {{part}}
+            <i class="icon-remove" ng-click="removePart(part)"
+               ng-class="{hide: part.predefined}"></i>
+            <i class="icon-repeat" ng-click="revertPart(part)"
+               ng-class="{hide: !part.predefined}"></i>
+            {{part.name}}
           </a>
         </li>
       </ul>

@@ -33,13 +33,15 @@ function LabCtrl($scope) {
         }
         break;
       case 'updateLabParts':
-        $scope.parts = [];
-        for (var i = 0; i < r.labParts.length; i++) {
-          $scope.parts.push(r.labParts[i]);
-        }
+        $scope.parts = r.labParts;
         if ($scope.activePart) {
-          var activePartIndex = r.labParts.indexOf($scope.activePart);
-          if (activePartIndex != -1) {
+          var activePartIndex = 0;
+          while (activePartIndex < $scope.parts.length) {
+            if ($scope.parts[activePartIndex].name == $scope.activePart)
+              break;
+            activePartIndex++;
+          }
+          if (activePartIndex != $scope.parts.length) {
             $scope.switchPart($scope.parts[activePartIndex]);
           } else {
             $scope.switchPart($scope.parts[0] || null);
@@ -99,12 +101,12 @@ function LabCtrl($scope) {
   $scope.switchPart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
     if (part && openDoc && $scope.activePart &&
-        $scope.activePart == part) {
+        $scope.activePart == part.name) {
       return;
     }
     $scope.errors = [];
     $scope.selectedError = null;
-    $scope.activePart = part;
+    $scope.activePart = part.name;
 
     if (openDoc) {
       openDoc.detach_ace();
@@ -117,13 +119,13 @@ function LabCtrl($scope) {
     if (part != null) {
       $scope.editor.setValue('Loading...');
       shareConnection.open(
-        $scope.user + ':' + $scope.lab + ':' + part,
+        $scope.user + ':' + $scope.lab + ':' + $scope.activePart,
         'text',
         function(e, doc) {
           if (e) return console.log(e);
           if (doc.state != 'open')
             console.log('Opened doc ' + doc.name + ' has state ' + doc.state);
-          if (part != $scope.activePart) {
+          if (part.name != $scope.activePart) {
             // another doc became active while this doc was opening
             return;
           }
@@ -140,10 +142,10 @@ function LabCtrl($scope) {
 
   $scope.removePart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
-    socket.send(JSON.stringify({type: 'deleteLabPart', partName: part}));
+    socket.send(JSON.stringify({type: 'deleteLabPart', partName: part.name}));
     var i = $scope.parts.indexOf(part);
     $scope.parts.splice(i, 1);
-    if ($scope.activePart == part) {
+    if ($scope.activePart == part.name) {
       if (i == $scope.parts.length) i--;
       $scope.switchPart($scope.parts.length == 0 ? null : $scope.parts[i]);
     }
@@ -151,7 +153,7 @@ function LabCtrl($scope) {
 
   $scope.revertPart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
-    socket.send(JSON.stringify({type: 'revertLabPart', partName: part}));
+    socket.send(JSON.stringify({type: 'revertLabPart', partName: part.name}));
   }
 
   $scope.newPart = function() {
@@ -162,18 +164,18 @@ function LabCtrl($scope) {
 
     var unique = true;
     angular.forEach($scope.parts, function(part) {
-      if (part == $scope.newPartName) unique = false;
+      if (part.name == $scope.newPartName) unique = false;
     });
     if (!unique) {
       $scope.newPartName = '';
       return;
     }
 
-    var newPart = $scope.newPartName;
+    var newPart = {name: $scope.newPartName, predefined: false};
     $scope.newPartName = '';
     $scope.parts.push(newPart);
     $scope.switchPart(newPart);
-    socket.send(JSON.stringify({type: 'addLabPart', partName: newPart}));
+    socket.send(JSON.stringify({type: 'addLabPart', partName: newPart.name}));
   }
 
   $scope.switchLab = function() {

@@ -35,8 +35,14 @@ exports.attach = function(server) {
 
     var sockFuncs = {
       'updateLabParts': function(lab, labParts) {
+        // TODO: change the labParts input to this function to be
+        // objects with 'predefined' fields instead of just strings
+        var labPartObjects = [];
+        for (var i = 0; i < labParts.length; i++) {
+          labPartObjects.push({name: labParts[i], predefined: false});
+        }
         sock.send(JSON.stringify(
-          {type: 'updateLabParts', lab: lab, labParts: labParts}));
+          {type: 'updateLabParts', lab: lab, labParts: labPartObjects}));
       },
       'updateLabs': function(labs) {
         sock.send(JSON.stringify({type: 'updateLabs', labs: labs}));
