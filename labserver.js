@@ -23,6 +23,7 @@ exports.attach = function(server) {
 
     var user = '';
     var lab = '';
+    var cursor = null;
 
     var javaRunner = new javarunner.JavaRunner(function(act) {
       if (sock.readyState != ws.OPEN) return;
@@ -40,6 +41,9 @@ exports.attach = function(server) {
       },
       'updateLabs': function(labs) {
         sock.send(JSON.stringify({type: 'updateLabs', labs: labs}));
+      },
+      'cursor': function(cursor) {
+        sock.send(JSON.stringify({type: 'cursor', cursor: cursor}));
       }
     };
 
@@ -148,6 +152,17 @@ exports.attach = function(server) {
       case 'stop':
         javaRunner.stop();
         break;
+      case 'cursor':
+        var userSocketList = userSockets[user];
+        if (!userSocketList) break;
+        var cursorId = userSocketList.indexOf(sockFuncs);
+        cursor = {id: cursorId, part: req.part, row: req.row, col: req.col};
+        for (var i = 0; i < userSocketList.length; i++) {
+          if (userSocketList[i] != sockFuncs) {
+            userSocketList[i].cursor(cursor);
+          }
+        }
+        break;
       }
     });
 
@@ -158,6 +173,11 @@ exports.attach = function(server) {
       var userSocketList = userSockets[user];
       if (userSocketList) {
         var pos = userSocketList.indexOf(sockFuncs);
+        for (var i = 0; i < userSocketList.length; i++) {
+          if (i != pos) {
+            userSocketList[i].cursor({id: pos});
+          }
+        }
         if (pos != -1) {
           userSocketList.splice(pos, 1);
         }

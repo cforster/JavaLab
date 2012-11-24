@@ -1,8 +1,15 @@
 function LabCtrl($scope) {
+  if (ace.require) {
+    Range = ace.require('ace/range').Range;
+  } else {
+    Range = require('ace/range').Range;
+  }
+
   $scope.user = '';
   $scope.labs = [];
   $scope.lab = null;
   $scope.servermsg = 'disconnected';
+  $scope.cursors = {};
 
   var socket = new WebSocket('ws://' + document.location.host + '/labserver');
   socket.onopen = function(event) {
@@ -59,6 +66,24 @@ function LabCtrl($scope) {
       case 'stdout':
         termStdout(r.stdout);
         break;
+      case 'cursor':
+        var cursor = r.cursor;
+        if (cursor.id in $scope.cursors) {
+          $scope.editor.session.removeMarker($scope.cursors[cursor.id].marker);
+        }
+        if (cursor.part == $scope.activePart &&
+            cursor.row != undefined && cursor.col != undefined) {
+          $scope.cursors[cursor.id] = {
+            row: cursor.row, col: cursor.col,
+            marker: $scope.editor.session.addMarker(
+              new Range(cursor.row, cursor.col, cursor.row, cursor.col + 1),
+              'shareCursor' + (cursor.id % 10),
+              'line',
+              true)};
+        } else {
+          delete $scope.cursors[cursor.id];
+        }
+        break;
       }
     });
   }
@@ -114,6 +139,10 @@ function LabCtrl($scope) {
       // revisit closing docs here if sharejs is fixed
       openDoc = null;
       $scope.editor.setReadOnly(true);
+      for (id in $scope.cursors) {
+        $scope.editor.session.removeMarker($scope.cursors[id].marker);
+      }
+      $scope.cursors = {};
     }
 
     if (part != null) {
@@ -134,6 +163,21 @@ function LabCtrl($scope) {
           $scope.editor.gotoLine(1, 0, false);
           $scope.editor.scrollToRow(0);
           $scope.editor.setReadOnly(false);
+
+          // This is needed because the cursor change may arrive
+          // before the ShareJS operation.
+          // TODO: find a more efficient solution
+          doc.on('remoteop', function(op) {
+            for (id in $scope.cursors) {
+              var cursor = $scope.cursors[id];
+              $scope.editor.session.removeMarker(cursor.marker);
+              cursor.marker = $scope.editor.session.addMarker(
+                new Range(cursor.row, cursor.col, cursor.row, cursor.col + 1),
+                'shareCursor' + (id % 10),
+                'line',
+                true);
+            }
+          });
         });
     } else {
       $scope.editor.setValue('No part selected');
@@ -221,6 +265,19 @@ function LabCtrl($scope) {
     $scope.editor.getSession().setTabSize(2);
     $scope.editor.setValue('No part loaded');
     $scope.editor.setReadOnly(true);
+
+    function uploadCursor() {
+      if (!$scope.user || !$scope.lab || !$scope.activePart ||
+          socket.readyState != 1) {
+        return;
+      }
+      var message = {type: 'cursor', part: $scope.activePart};
+      var pos = $scope.editor.getCursorPosition();
+      message.row = pos.row;
+      message.col = pos.column;
+      socket.send(JSON.stringify(message));
+    }
+    $scope.editor.on('changeSelection', uploadCursor);
   }
 
   var termStdinStart = 0;

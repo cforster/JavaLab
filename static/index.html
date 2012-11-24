@@ -162,6 +162,24 @@
     hide {
       visibility: hidden;
     }
+
+    .shareCursor0, .shareCursor1, .shareCursor2, .shareCursor3, .shareCursor4,
+    .shareCursor5, .shareCursor6, .shareCursor7, .shareCursor8, .shareCursor9 {
+      border-left-style: solid;
+      border-left-width: 2px;
+      position: absolute;
+      z-index: 5;
+    }
+    .shareCursor0 { border-left-color: #ff0000 }
+    .shareCursor1 { border-left-color: #00ff00 }
+    .shareCursor2 { border-left-color: #0000ff }
+    .shareCursor3 { border-left-color: #ffff00 }
+    .shareCursor4 { border-left-color: #00ffff }
+    .shareCursor5 { border-left-color: #ff00ff }
+    .shareCursor6 { border-left-color: #ff8800 }
+    .shareCursor7 { border-left-color: #ff8888 }
+    .shareCursor8 { border-left-color: #8800ff }
+    .shareCursor9 { border-left-color: #880000 }
   </style>
 </head>
 <body ng-controller="LabCtrl">
