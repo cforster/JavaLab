@@ -37,7 +37,7 @@ function readLab(labName, callback) {
       if (e) return callback(e);
       var parts = [];
       for (var i = 0; i < results.length; i++) {
-        parts.push({name: lab.parts[i], text: results[i]});
+        parts.push({name: lab.parts[i], text: results[i], predefined: true});
       }
       return callback(null, parts);
     });
@@ -93,16 +93,26 @@ exports.populateLabPart = function(user, labName, partName, src, force, callback
 exports.getOrCreateUserLab = function(user, labName, callback) {
   readUserLab(user, labName, function(e, item) {
     if (e) return callback(e);
-    if (item) return callback(null, item);
+    if (item) {
+      // TODO: remove this eventually
+      if (item.labParts && typeof item.labParts[0] == 'string') {
+        // database is using old schema for lab parts, fix it
+        for (var i = 0; i < item.labParts.length; i++) {
+          item.labParts[i] = {name: item.labParts[i], predefined: false};
+        }
+      }
+      return callback(null, item);
+    }
 
     // user lab does not exist in DB, create it
     readLab(labName, function(e, labPartData) {
       if (e) return callback(e);
-      var partNames = [];
+      var parts = [];
       for (var i = 0; i < labPartData.length; i++) {
-        partNames.push(labPartData[i].name);
+        parts.push({name: labPartData[i].name,
+                    predefined: labPartData[i].predefined});
       }
-      createUserLab(user, labName, partNames, function(e) {
+      createUserLab(user, labName, parts, function(e) {
         if (e) return callback(e);     
         async.forEach(labPartData, function(part, done) {
           exports.populateLabPart(

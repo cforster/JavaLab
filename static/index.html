@@ -197,9 +197,9 @@
           <a href="#" ng-click="switchPart(part)"
              style="margin-right: -40px">
             <i class="icon-remove" ng-click="removePart(part)"
-               ng-class="{hide: part.predefined}"></i>
+               ng-class="{hide: part.predefined}" title="Remove"></i>
             <i class="icon-repeat" ng-click="revertPart(part)"
-               ng-class="{hide: !part.predefined}"></i>
+               ng-class="{hide: !part.predefined}" title="Revert"></i>
             {{part.name}}
           </a>
         </li>

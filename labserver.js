@@ -35,14 +35,8 @@ exports.attach = function(server) {
 
     var sockFuncs = {
       'updateLabParts': function(lab, labParts) {
-        // TODO: change the labParts input to this function to be
-        // objects with 'predefined' fields instead of just strings
-        var labPartObjects = [];
-        for (var i = 0; i < labParts.length; i++) {
-          labPartObjects.push({name: labParts[i], predefined: false});
-        }
         sock.send(JSON.stringify(
-          {type: 'updateLabParts', lab: lab, labParts: labPartObjects}));
+          {type: 'updateLabParts', lab: lab, labParts: labParts}));
       },
       'updateLabs': function(labs) {
         sock.send(JSON.stringify({type: 'updateLabs', labs: labs}));
@@ -95,7 +89,7 @@ exports.attach = function(server) {
         if (!lab) return sendError('Lab has not been set');
         labdb.getOrCreateUserLab(user, lab, function(e, labInfo) {
           if (e) return sendError('Failed to get user lab', e);
-          labInfo.labParts.push(req.partName);
+          labInfo.labParts.push({name: req.partName, predefined: false});
           labdb.updateUserLab(user, lab, labInfo.labParts, function(e) {
             if (e) return sendError('Failed to update user lab', e);
           });
@@ -115,8 +109,14 @@ exports.attach = function(server) {
         if (!lab) return sendError('Lab has not been set');
         labdb.getOrCreateUserLab(user, lab, function(e, labInfo) {
           if (e) return sendError('Failed to get user lab', e);
-          var index = labInfo.labParts.indexOf(req.partName);
-          if (index == -1) return sendError('Lab part ' + req.partName + ' not found');
+          var index = 0;
+          while (index < labInfo.labParts.length) {
+            if (labInfo.labParts[index].name == req.partName) break;
+            ++index;
+          }
+          if (index == labInfo.labParts.length) {
+            return sendError('Lab part ' + req.partName + ' not found');
+          }
           labInfo.labParts.splice(index, 1);
           labdb.updateUserLab(user, lab, labInfo.labParts, function(e) {
             if (e) return sendError('Failed to update user lab', e);
