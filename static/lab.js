@@ -131,7 +131,11 @@ function LabCtrl($scope) {
     }
     $scope.errors = [];
     $scope.selectedError = null;
-    $scope.activePart = part.name;
+    if (part) {
+      $scope.activePart = part.name;
+    } else {
+      $scope.activePart = null;
+    }
 
     if (openDoc) {
       openDoc.detach_ace();
@@ -163,6 +167,10 @@ function LabCtrl($scope) {
           $scope.editor.gotoLine(1, 0, false);
           $scope.editor.scrollToRow(0);
           $scope.editor.setReadOnly(false);
+
+          if (socket.readyState == 1) {
+            socket.send(JSON.stringify({type: 'getCursors'}));
+          }
 
           // This is needed because the cursor change may arrive
           // before the ShareJS operation.
@@ -240,6 +248,7 @@ function LabCtrl($scope) {
         }
         return;
       }
+      $scope.switchPart(null);
       socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
       socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
     });
@@ -271,7 +280,7 @@ function LabCtrl($scope) {
           socket.readyState != 1) {
         return;
       }
-      var message = {type: 'cursor', part: $scope.activePart};
+      var message = {type: 'setCursor', part: $scope.activePart};
       var pos = $scope.editor.getCursorPosition();
       message.row = pos.row;
       message.col = pos.column;

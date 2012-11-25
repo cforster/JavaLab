@@ -44,12 +44,43 @@ exports.attach = function(server) {
       },
       'cursor': function(cursor) {
         sock.send(JSON.stringify({type: 'cursor', cursor: cursor}));
+      },
+      'getCursor': function() {
+        return cursor;
+      },
+      'updateCursorId': function(id) {
+        if (cursor) {
+          cursor.id = id;
+        }
       }
     };
 
     function sendError(errorText, e) {
       if (e) errorText += ': ' + e;
       sock.send(JSON.stringify({type: 'error', text: errorText}));
+    }
+
+    function removeFromUserSockets() {
+      var userSocketList = userSockets[user];
+      if (userSocketList) {
+        var pos = userSocketList.indexOf(sockFuncs);
+        if (pos == -1) return;
+        userSocketList.splice(pos, 1);
+        for (var i = 0; i < userSocketList.length; i++) {
+          userSocketList[i].cursor({id: userSocketList.length});
+          if (i >= pos) {
+            userSocketList[i].updateCursorId(i);
+            var c = userSocketList[i].getCursor();
+            for (var j = 0; j < userSocketList.length; j++) {
+              if (i != j) {
+                userSocketList[j].cursor(c);
+              } else {
+                userSocketList[j].cursor({id: j});
+              }
+            }
+          }
+        }
+      }
     }
 
     sock.on('message', function(message) {
@@ -67,13 +98,7 @@ exports.attach = function(server) {
       switch (req.type) {
       case 'setUser':
         if (user) {
-          var userSocketList = userSockets[user];
-          if (userSocketList) {
-            var pos = userSocketList.indexOf(sockFuncs);
-            if (pos != -1) {
-              userSocketList.splice(pos, 1);
-            }
-          }
+          removeFromUserSockets();
         }
         user = req.user;
         if (user in userSockets) {
@@ -152,7 +177,7 @@ exports.attach = function(server) {
       case 'stop':
         javaRunner.stop();
         break;
-      case 'cursor':
+      case 'setCursor':
         var userSocketList = userSockets[user];
         if (!userSocketList) break;
         var cursorId = userSocketList.indexOf(sockFuncs);
@@ -163,6 +188,18 @@ exports.attach = function(server) {
           }
         }
         break;
+      case 'getCursors':
+        var userSocketList = userSockets[user];
+        if (!userSocketList) break;
+        for (var i = 0; i < userSocketList.length; i++) {
+          if (userSocketList[i] != sockFuncs) {
+            var c = userSocketList[i].getCursor();
+            if (c) {
+              sockFuncs.cursor(c);
+            }
+          }
+        }        
+        break;
       }
     });
 
@@ -170,18 +207,7 @@ exports.attach = function(server) {
       util.log('labserver #' + id + ' closed');
       javaRunner.stop();
       javaRunner.cleanup();
-      var userSocketList = userSockets[user];
-      if (userSocketList) {
-        var pos = userSocketList.indexOf(sockFuncs);
-        for (var i = 0; i < userSocketList.length; i++) {
-          if (i != pos) {
-            userSocketList[i].cursor({id: pos});
-          }
-        }
-        if (pos != -1) {
-          userSocketList.splice(pos, 1);
-        }
-      }
+      removeFromUserSockets();
     });
 
     sock.on('error', function(reason, errorCode) {
