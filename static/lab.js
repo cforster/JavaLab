@@ -6,8 +6,10 @@ function LabCtrl($scope) {
   }
 
   $scope.user = '';
+  $scope.home = '';
+  $scope.homes = [];
+  $scope.lab = 'scratch';
   $scope.labs = [];
-  $scope.lab = null;
   $scope.servermsg = 'disconnected';
   $scope.cursors = {};
 
@@ -33,28 +35,49 @@ function LabCtrl($scope) {
           $scope.selectedError = null
         }
         break;
-      case 'updateLabs':
-        $scope.labs = r.labs;
-        if (!$scope.lab) {
-          $scope.lab = $scope.labs[0] || null;
-        }
-        break;
-      case 'updateLabParts':
-        $scope.parts = r.labParts;
-        if ($scope.activePart) {
-          var activePartIndex = 0;
-          while (activePartIndex < $scope.parts.length) {
-            if ($scope.parts[activePartIndex].name == $scope.activePart)
-              break;
-            activePartIndex++;
+      case 'update':
+        if (r.homes) {
+          $scope.homes = r.homes;
+        } else if (r.labs) {
+          $scope.labs = r.labs;
+          if (!$scope.lab) {
+            $scope.lab = $scope.labs[0] || null;
           }
-          if (activePartIndex != $scope.parts.length) {
-            $scope.switchPart($scope.parts[activePartIndex]);
+        } else if (r.labParts) {
+          $scope.parts = r.labParts;
+          if ($scope.activePart) {
+            var activePartIndex = 0;
+            while (activePartIndex < $scope.parts.length) {
+              if ($scope.parts[activePartIndex].name == $scope.activePart)
+                break;
+              activePartIndex++;
+            }
+            if (activePartIndex != $scope.parts.length) {
+              $scope.switchPart($scope.parts[activePartIndex]);
+            } else {
+              $scope.switchPart($scope.parts[0] || null);
+            }
           } else {
             $scope.switchPart($scope.parts[0] || null);
           }
-        } else {
-          $scope.switchPart($scope.parts[0] || null);
+        } else if (r.cursor) {
+          var cursor = r.cursor;
+          if (cursor.id in $scope.cursors) {
+            $scope.editor.session.removeMarker(
+              $scope.cursors[cursor.id].marker);
+          }
+          if (cursor.part == $scope.activePart &&
+              cursor.row != undefined && cursor.col != undefined) {
+            $scope.cursors[cursor.id] = {
+              row: cursor.row, col: cursor.col,
+              marker: $scope.editor.session.addMarker(
+                new Range(cursor.row, cursor.col, cursor.row, cursor.col + 1),
+                'shareCursor' + (cursor.id % 10),
+                'line',
+                true)};
+          } else {
+            delete $scope.cursors[cursor.id];
+          }
         }
         break;
       case 'compileErrors':
@@ -65,24 +88,6 @@ function LabCtrl($scope) {
         break;
       case 'stdout':
         termStdout(r.stdout);
-        break;
-      case 'cursor':
-        var cursor = r.cursor;
-        if (cursor.id in $scope.cursors) {
-          $scope.editor.session.removeMarker($scope.cursors[cursor.id].marker);
-        }
-        if (cursor.part == $scope.activePart &&
-            cursor.row != undefined && cursor.col != undefined) {
-          $scope.cursors[cursor.id] = {
-            row: cursor.row, col: cursor.col,
-            marker: $scope.editor.session.addMarker(
-              new Range(cursor.row, cursor.col, cursor.row, cursor.col + 1),
-              'shareCursor' + (cursor.id % 10),
-              'line',
-              true)};
-        } else {
-          delete $scope.cursors[cursor.id];
-        }
         break;
       }
     });
@@ -125,10 +130,10 @@ function LabCtrl($scope) {
   var openDoc = null;
   $scope.switchPart = function(part) {
     if (!$scope.user || socket.readyState != 1) return;
-    if (part && openDoc && $scope.activePart &&
-        $scope.activePart == part.name) {
+    if (part && $scope.activePart && $scope.activePart == part.name) {
       return;
     }
+
     $scope.errors = [];
     $scope.selectedError = null;
     if (part) {
@@ -152,7 +157,7 @@ function LabCtrl($scope) {
     if (part != null) {
       $scope.editor.setValue('Loading...');
       shareConnection.open(
-        $scope.user + ':' + $scope.lab + ':' + $scope.activePart,
+        $scope.home + ':' + $scope.lab + ':' + $scope.activePart,
         'text',
         function(e, doc) {
           if (e) return console.log(e);
@@ -230,11 +235,6 @@ function LabCtrl($scope) {
     socket.send(JSON.stringify({type: 'addLabPart', partName: newPart.name}));
   }
 
-  $scope.switchLab = function() {
-    $scope.lastUser = $scope.user;
-    $('#loginModal').modal();
-  }
-
   $scope.login = function() {
     if (!$scope.user) return;
     $('#loginModal').modal('hide');
@@ -242,17 +242,47 @@ function LabCtrl($scope) {
 
   $('#loginModal').on('hidden', function() {
     $scope.$apply(function() {
-      if (!$scope.user) {
-        if ($scope.lastUser) {
-          $scope.user = $scope.lastUser;
-        }
-        return;
+      if (!$scope.user) return;
+      $scope.home = $scope.user;
+      if (!($scope.home in $scope.homes)) {
+        $scope.homes.push($scope.home);
       }
       $scope.switchPart(null);
       socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
+      socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
       socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
     });
   });
+
+  $scope.switchLab = function(labName) {
+    $scope.lab = labName;
+    $scope.switchPart(null);
+    socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+  }
+
+  $scope.newLab = function() {
+    $('#labDropdown').dropdown('toggle');
+    $scope.lab = $scope.newLabName;
+    $scope.labs.push($scope.lab);
+    $scope.newLabName = '';
+    $scope.switchPart(null);
+    socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+  }
+
+  $scope.switchHome = function(homeName) {
+    $scope.home = homeName;
+    $scope.switchPart(null);
+    socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
+  }
+
+  $scope.newHome = function() {
+    $('#homeDropdown').dropdown('toggle');
+    $scope.home = $scope.newHomeName;
+    $scope.homes.push($scope.home);
+    $scope.newHomeName = '';
+    $scope.switchPart(null);
+    socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
+  }
 
   $scope.run = function() {
     if (!$scope.user || socket.readyState != 1) return;
@@ -390,6 +420,42 @@ function LabCtrl($scope) {
         }
       });
     }());
+
+    // fix bootstrap dropdown handler to allow text input
+    var clearMenus;
+    var clickEvents = $._data($('html')[0], 'events').click;
+    for (var i = 0; i < clickEvents.length; i++) {
+      if (clickEvents[i].namespace == 'data-api.dropdown') {
+        clearMenus = clickEvents[i].handler;
+        clickEvents.splice(i, 1);
+        break;
+      }
+    }
+    var touchEvents = $._data($('html')[0], 'events').touchstart;
+    for (var i = 0; i < touchEvents.length; i++) {
+      if (touchEvents[i].namespace == 'data-api.dropdown') {
+        touchEvents.splice(i, 1);
+        break;
+      }
+    }
+    $('#labDropdown').dropdown();
+    $('#homeDropdown').dropdown();
+    var clickEvents = $._data($('html')[0], 'events').click;
+    for (var i = 0; i < clickEvents.length;) {
+      if (clickEvents[i].namespace == 'data-api.dropdown') {
+        clickEvents.splice(i, 1);
+      } else {
+        ++i;
+      }
+    }    
+    $('html').on(
+      'click.dropdown.data-api touchstart.dropdown.data-api', function(e) {
+        if (e.srcElement.id == 'labNameInput' ||
+            e.srcElement.id == 'homeNameInput') {
+          return;
+        }
+        clearMenus();
+      });
 
     // show the login modal dialog on startup
     $('#loginModal').modal();

@@ -44,18 +44,18 @@ function readLab(labName, callback) {
   });
 }
 
-function readUserLab(user, labName, callback) {
-  db.collection('userlabs', function(e, collection) {
+function readHomeLab(home, labName, callback) {
+  db.collection('homelabs', function(e, collection) {
     if (e) return callback(e);
-    collection.findOne({user: user, labName: labName}, callback);
+    collection.findOne({home: home, labName: labName}, callback);
   });
 }
 
-function createUserLab(user, labName, labParts, callback) {
-  db.collection('userlabs', function(e, collection) {
+function createHomeLab(home, labName, labParts, callback) {
+  db.collection('homelabs', function(e, collection) {
     if (e) return callback(e);
     collection.insert(
-      {user: user, labName: labName, labParts: labParts},
+      {home: home, labName: labName, labParts: labParts},
       {safe: true},
       function(e, result) {
         return callback(e);
@@ -67,8 +67,8 @@ var shareServerUrl =
   'ws://localhost:' +
   (process.env.npm_package_config_port || '80') +
   '/shareserver';
-exports.populateLabPart = function(user, labName, partName, src, force, callback) {
-  var docName = user + ':' + labName + ':' + partName;
+exports.populateLabPart = function(home, labName, partName, src, force, callback) {
+  var docName = home + ':' + labName + ':' + partName;
   shareClient.open(docName, 'text', shareServerUrl, function(e, doc) {
     if (e) return callback(e);
     var text = doc.getText();
@@ -90,21 +90,12 @@ exports.populateLabPart = function(user, labName, partName, src, force, callback
   });
 }
 
-exports.getOrCreateUserLab = function(user, labName, callback) {
-  readUserLab(user, labName, function(e, item) {
+exports.getOrCreateHomeLab = function(home, labName, callback) {
+  readHomeLab(home, labName, function(e, item) {
     if (e) return callback(e);
-    if (item) {
-      // TODO: remove this eventually
-      if (item.labParts && typeof item.labParts[0] == 'string') {
-        // database is using old schema for lab parts, fix it
-        for (var i = 0; i < item.labParts.length; i++) {
-          item.labParts[i] = {name: item.labParts[i], predefined: false};
-        }
-      }
-      return callback(null, item);
-    }
+    if (item) return callback(null, item);
 
-    // user lab does not exist in DB, create it
+    // home lab does not exist in DB, create it
     readLab(labName, function(e, labPartData) {
       if (e) return callback(e);
       var parts = [];
@@ -112,14 +103,14 @@ exports.getOrCreateUserLab = function(user, labName, callback) {
         parts.push({name: labPartData[i].name,
                     predefined: labPartData[i].predefined});
       }
-      createUserLab(user, labName, parts, function(e) {
+      createHomeLab(home, labName, parts, function(e) {
         if (e) return callback(e);     
         async.forEach(labPartData, function(part, done) {
           exports.populateLabPart(
-            user, labName, part.name, part.text, false, done);
+            home, labName, part.name, part.text, false, done);
         }, function(e) {
           if (e) return callback(e);
-          readUserLab(user, labName, function(e, item) {
+          readHomeLab(home, labName, function(e, item) {
             if (e) return callback(e);
             return callback(null, item);
           });
@@ -129,11 +120,11 @@ exports.getOrCreateUserLab = function(user, labName, callback) {
   });
 }
 
-exports.updateUserLab = function(user, labName, labParts, callback) {
-  db.collection('userlabs', function(e, collection) {
+exports.updateHomeLab = function(home, labName, labParts, callback) {
+  db.collection('homelabs', function(e, collection) {
     if (e) return callback(e);
     collection.update(
-      {user: user, labName: labName},
+      {home: home, labName: labName},
       {$set: {labParts: labParts}},
       {safe: true},
       function(e, result) {

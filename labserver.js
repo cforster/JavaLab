@@ -1,3 +1,4 @@
+var _ = require('underscore')._;
 var util = require('util');
 var ws = require('ws');
 
@@ -12,7 +13,7 @@ var MAIN_BOILERPLATE =
   "}\n";
 
 var nextId = 0;
-var userSockets = {};
+var homes = {};
 
 exports.attach = function(server) {
   var options = {server: server, path: '/labserver'};
@@ -22,8 +23,9 @@ exports.attach = function(server) {
     util.log('labserver #' + id + ' connected');
 
     var user = '';
+    var home = null;
     var lab = '';
-    var cursor = null;
+    var cursor = {};
 
     var javaRunner = new javarunner.JavaRunner(function(act) {
       if (sock.readyState != ws.OPEN) return;
@@ -34,24 +36,25 @@ exports.attach = function(server) {
       }
     });
 
-    var sockFuncs = {
-      'updateLabParts': function(lab, labParts) {
-        sock.send(JSON.stringify(
-          {type: 'updateLabParts', lab: lab, labParts: labParts}));
-      },
-      'updateLabs': function(labs) {
-        sock.send(JSON.stringify({type: 'updateLabs', labs: labs}));
-      },
-      'cursor': function(cursor) {
-        sock.send(JSON.stringify({type: 'cursor', cursor: cursor}));
-      },
+    var sockExports = {
       'getCursor': function() {
         return cursor;
       },
-      'updateCursorId': function(id) {
-        if (cursor) {
-          cursor.id = id;
-        }
+      'setCursorId': function(id) {
+        cursor.id = id;
+      },
+      'updateCursor': function(cursor) {
+        sock.send(JSON.stringify({type: 'update', cursor: cursor}));
+      },
+      'updateHomes': function(homes) {
+        sock.send(JSON.stringify({type: 'update', homes: homes}));
+      },
+      'updateLabs': function(labs) {
+        sock.send(JSON.stringify({type: 'update', labs: labs}));
+      },
+      'updateLabParts': function(labToUpdate, labParts) {
+        if (lab != labToUpdate) return;
+        sock.send(JSON.stringify({type: 'update', labParts: labParts}));
       }
     };
 
@@ -59,30 +62,47 @@ exports.attach = function(server) {
       if (e) errorText += ': ' + e;
       sock.send(JSON.stringify({type: 'error', text: errorText}));
     }
-
-    function removeFromUserSockets() {
-      var userSocketList = userSockets[user];
-      if (userSocketList) {
-        var pos = userSocketList.indexOf(sockFuncs);
-        if (pos == -1) return;
-        userSocketList.splice(pos, 1);
-        for (var i = 0; i < userSocketList.length; i++) {
-          userSocketList[i].cursor({id: userSocketList.length});
-          if (i >= pos) {
-            userSocketList[i].updateCursorId(i);
-            var c = userSocketList[i].getCursor();
-            for (var j = 0; j < userSocketList.length; j++) {
-              if (i != j) {
-                userSocketList[j].cursor(c);
-              } else {
-                userSocketList[j].cursor({id: j});
-              }
-            }
-          }
+ 
+    function addToHome(homeName) {
+      if (!(homeName in homes)) {
+        homes[homeName] = {
+          name: homeName,
+          socks: []
         }
+        _.each(homes, function(home) {
+          _.each(home.socks, function(sock) {
+            sock.updateHomes(_.keys(homes));
+          });
+        });
       }
+      home = homes[homeName];
+      home.socks.push(sockExports);
+      cursor = {id: home.socks.length - 1};
     }
-
+    
+    function removeFromHome() {
+      if (!home) return;
+      var pos = home.socks.indexOf(sockExports);
+      if (pos == -1) return;
+      home.socks.splice(pos, 1);
+      // renumber the cursors of connections >= pos
+      _.each(_.rest(home.socks, pos), function(sock, i) {
+        sock.setCursorId(i + pos);
+      });
+      _.each(home.socks, function(sock) {
+        // remove the highest numbered cursor from each connection
+        sock.updateCursor({id: home.socks.length});
+        // resend all cursors >= pos to all connections
+        _.each(_.rest(home.socks, pos), function(cursorSock, i) {
+          if (cursorSock != sock) {
+            sock.updateCursor(cursorSock.getCursor());
+          } else {
+            sock.updateCursor({id: i + pos});
+          }
+        });
+      });
+    }
+ 
     sock.on('message', function(message) {
       var req;
       try {
@@ -91,70 +111,65 @@ exports.attach = function(server) {
         return sendError('Failed to parse request', e);
       }
 
-      if (!user && req.type != 'setUser') {
-        return sendError('User has not been set');
+      if (!home && req.type != 'setHome' && req.type != 'setUser') {
+        return sendError('Home has not been set');
       }
 
       switch (req.type) {
       case 'setUser':
-        if (user) {
-          removeFromUserSockets();
-        }
         user = req.user;
-        if (user in userSockets) {
-          userSockets[user].push(sockFuncs);
-        } else {
-          userSockets[user] = [sockFuncs];
+        break;
+      case 'setHome':
+        removeFromHome();
+        addToHome(req.home);
+        if (lab) {
+          labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
+            if (e) return sendError('Failed to get home lab', e);
+            sockExports.updateLabParts(lab, labInfo.labParts);
+          });
         }
         break;
       case 'setLab':
         lab = req.lab;
-        labdb.getOrCreateUserLab(user, lab, function(e, labInfo) {
-          if (e) return sendError('Failed to get user lab', e);
-          sockFuncs.updateLabParts(lab, labInfo.labParts);
+        labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
+          if (e) return sendError('Failed to get home lab', e);
+          sockExports.updateLabParts(lab, labInfo.labParts);
         });
         break;
       case 'addLabPart':
         if (!lab) return sendError('Lab has not been set');
-        labdb.getOrCreateUserLab(user, lab, function(e, labInfo) {
-          if (e) return sendError('Failed to get user lab', e);
+        labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
+          if (e) return sendError('Failed to get home lab', e);
           labInfo.labParts.push({name: req.partName, predefined: false});
-          labdb.updateUserLab(user, lab, labInfo.labParts, function(e) {
-            if (e) return sendError('Failed to update user lab', e);
+          labdb.updateHomeLab(home.name, lab, labInfo.labParts, function(e) {
+            if (e) return sendError('Failed to update home lab', e);
           });
           var mainBoilerplate = MAIN_BOILERPLATE.replace('Main', req.partName);
           labdb.populateLabPart(
-            user, lab, req.partName, mainBoilerplate, false, function(e) {
+            home.name, lab, req.partName, mainBoilerplate, false, function(e) {
               if (e) return sendError('Failed to populate new lab part', e);
             });
-          for (var i = 0; i < userSockets[user].length; i++) {
-            if (userSockets[user][i] != sockFuncs) {
-              userSockets[user][i].updateLabParts(lab, labInfo.labParts);
-            }
-          }
+          _.each(home.socks, function(sock) {
+            sock.updateLabParts(lab, labInfo.labParts);
+          });
         });
         break;
       case 'deleteLabPart':
         if (!lab) return sendError('Lab has not been set');
-        labdb.getOrCreateUserLab(user, lab, function(e, labInfo) {
-          if (e) return sendError('Failed to get user lab', e);
-          var index = 0;
-          while (index < labInfo.labParts.length) {
-            if (labInfo.labParts[index].name == req.partName) break;
-            ++index;
-          }
-          if (index == labInfo.labParts.length) {
+        labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
+          if (e) return sendError('Failed to get home lab', e);
+          var newLabParts = _.reject(labInfo.labParts, function(labPart) {
+            return labPart.name == req.partName;
+          });
+          if (labInfo.labParts.length == newLabParts.length) {
             return sendError('Lab part ' + req.partName + ' not found');
           }
-          labInfo.labParts.splice(index, 1);
-          labdb.updateUserLab(user, lab, labInfo.labParts, function(e) {
-            if (e) return sendError('Failed to update user lab', e);
+          labdb.updateHomeLab(home.name, lab, newLabParts, function(e) {
+            if (e) return sendError('Failed to update home lab', e);
           });
-          for (var i = 0; i < userSockets[user].length; i++) {
-            if (userSockets[user][i] != sockFuncs) {
-              userSockets[user][i].updateLabParts(lab, labInfo.labParts);
-            }
-          }
+          _.each(home.socks, function(sock) {
+            sock.updateLabParts(lab, newLabParts);
+          });
         });
         break;
       case 'revertLabPart':
@@ -163,7 +178,7 @@ exports.attach = function(server) {
           if (e) return sendError('Failed to read lab part for lab ' +
                                   lab + ' part ' + req.partName, e);
           labdb.populateLabPart(
-            user, lab, req.partName, src, true, function(e) {
+            home.name, lab, req.partName, src, true, function(e) {
               if (e) return sendError('Failed to populate lab part', e);
             });            
         });
@@ -178,27 +193,17 @@ exports.attach = function(server) {
         javaRunner.stop();
         break;
       case 'setCursor':
-        var userSocketList = userSockets[user];
-        if (!userSocketList) break;
-        var cursorId = userSocketList.indexOf(sockFuncs);
-        cursor = {id: cursorId, part: req.part, row: req.row, col: req.col};
-        for (var i = 0; i < userSocketList.length; i++) {
-          if (userSocketList[i] != sockFuncs) {
-            userSocketList[i].cursor(cursor);
-          }
-        }
+        cursor.part = req.part;
+        cursor.row = req.row;
+        cursor.col = req.col;
+        _.each(home.socks, function(sock) {
+          if (sock != sockExports) sock.updateCursor(cursor);
+        });
         break;
       case 'getCursors':
-        var userSocketList = userSockets[user];
-        if (!userSocketList) break;
-        for (var i = 0; i < userSocketList.length; i++) {
-          if (userSocketList[i] != sockFuncs) {
-            var c = userSocketList[i].getCursor();
-            if (c) {
-              sockFuncs.cursor(c);
-            }
-          }
-        }        
+        _.each(home.socks, function(sock) {
+          if (sock != sockExports) sockExports.updateCursor(sock.getCursor());
+        });
         break;
       }
     });
@@ -207,16 +212,17 @@ exports.attach = function(server) {
       util.log('labserver #' + id + ' closed');
       javaRunner.stop();
       javaRunner.cleanup();
-      removeFromUserSockets();
+      removeFromHome();
     });
 
     sock.on('error', function(reason, errorCode) {
       util.log('labserver #' + id + ' error ' + errorCode + ': ' + reason);
     });
 
+    sockExports.updateHomes(_.keys(homes));
     labdb.listLabs(function(e, labs) {
       if (e) return sendError('Failed to list labs');
-      sockFuncs.updateLabs(labs);
+      sockExports.updateLabs(labs);
     });
   });
 }

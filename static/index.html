@@ -4,7 +4,7 @@
   <title>Java Lab</title>
   <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-  <script src="bootstrap/js/bootstrap.min.js"></script>
+  <script src="bootstrap/js/bootstrap.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.2/angular.min.js"></script>
   <script src="ace/ace.js"></script>
   <script src="share/share.js"></script>
@@ -39,24 +39,11 @@
       float: right;
     }
 
-    #header-buttons {
+    .header-buttons {
       margin-top: 10px;
       margin-right: 4px;
       height: 30px;
       float: right;
-    }
-
-    #login-info {
-      margin-top: 10px;
-      margin-right: 8px;
-      height: 30px;
-      float: right;
-    }
-
-    .login-span {
-      margin-top: 6px;
-      margin-left: 0px;
-      margin-right: 8px;
     }
 
     #content {
@@ -189,7 +176,7 @@
     <div id="servermsg"
          ng-class="{'alert-error': servermsg == 'disconnected', 'alert-success': servermsg != 'disconnected'}"
          class="alert" ng-bind="servermsg"></div>
-    <div id="header-buttons" class="btn-group">
+    <div class="header-buttons btn-group">
       <button id="run-button" class="btn"
               ng-class="{'disabled': servermsg == 'disconnected'}"
               ng-click="run()">Run</button>
@@ -197,11 +184,47 @@
               ng-class="{'disabled': servermsg != 'run'}"
               ng-click="stop()">Stop</button>
     </div>
-    <div id="login-info">
-      <span class="login-span"><i class="icon-folder-open"></i>{{ lab }}</span>
-      <span class="login-span"><i class="icon-user"></i>{{ user }}</span>
-      <button id="switch-lab-button" class="btn"
-              ng-click="switchLab()">Switch Lab</button>
+    <div class="header-buttons btn-group">
+      <a id="labDropdown" class="btn dropdown-toggle"
+         data-toggle="dropdown" href="#">
+        <i class="icon-folder-open"></i>&nbsp;{{ lab }}
+        <span class="caret"></span>
+      </a>
+      <ul class="dropdown-menu">
+        <li ng-repeat="labname in labs">
+          <a href="#" tabindex="-1"
+             ng-click="switchLab(labname)">{{ labname }}</a>
+        </li>
+        <li class="divider"></li>
+        <form name="newLabForm" style="margin: 0" ng-submit="newLab()">
+          <div class="control-group" style="margin: 0">
+            <input type="text" id="labNameInput" disabled
+                   style="margin-left: 8px; margin-right: 8px"
+                   ng-model="newLabName" placeholder="Start new lab">
+          </div>
+        </form>
+      </ul>
+    </div>
+    <div class="header-buttons btn-group">
+      <a id="homeDropdown" class="btn dropdown-toggle"
+         data-toggle="dropdown" href="#">
+        <i class="icon-home"></i>&nbsp;{{ home }}
+        <span class="caret"></span>
+      </a>
+      <ul class="dropdown-menu">
+        <li ng-repeat="homename in homes">
+          <a href="#" tabindex="-1"
+             ng-click="switchHome(homename)">{{ homename }}</a>
+        </li>
+        <li class="divider"></li>
+        <form name="newHomeForm" style="margin: 0" ng-submit="newHome()">
+          <div class="control-group" style="margin: 0">
+            <input type="text" id="homeNameInput"
+                   style="margin-left: 8px; margin-right: 8px"
+                   ng-model="newHomeName" placeholder="Start new home">
+          </div>
+        </form>
+      </ul>
     </div>
   </div>
 
@@ -289,17 +312,10 @@
     <div class="modal-body">
       <form name="loginForm" class="form-horizontal" ng-submit="login()">
         <div class="control-group" ng-class="{error: loginForm.$invalid}">
-          <label class="control-label" for="inputUser">User or group</label>
+          <label class="control-label" for="inputUser">User</label>
           <div class="controls">
-            <input type="text" id="inputUser" placeholder="User or group"
+            <input type="text" id="inputUser" placeholder="User"
                    ng-model="user" ng-pattern="/^\w+$/"></input>
-          </div>
-        </div>
-        <div class="control-group">
-          <label class="control-label" for="inputLab">Lab</label>
-          <div class="controls">
-            <select id="inputLab" ng-model="lab"
-                    ng-options="lab for lab in labs"></select>
           </div>
         </div>
       </form>
