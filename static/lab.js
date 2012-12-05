@@ -46,14 +46,11 @@ function LabCtrl($scope) {
         } else if (r.labParts) {
           $scope.parts = r.labParts;
           if ($scope.activePart) {
-            var activePartIndex = 0;
-            while (activePartIndex < $scope.parts.length) {
-              if ($scope.parts[activePartIndex].name == $scope.activePart)
-                break;
-              activePartIndex++;
-            }
-            if (activePartIndex != $scope.parts.length) {
-              $scope.switchPart($scope.parts[activePartIndex]);
+            var activePart = _.find($scope.parts, function(part) {
+              return part.name == $scope.activePart;
+            });
+            if (activePart) {
+              $scope.switchPart(activePart);
             } else {
               $scope.switchPart($scope.parts[0] || null);
             }
@@ -110,15 +107,9 @@ function LabCtrl($scope) {
   }
 
   $scope.newPartNameChanged = function() {
-    if (!$scope.newPartPattern.exec($scope.newPartName)) {
-      $scope.newPartForm.$invalid = true;
-      return;
-    }
-    if ($scope.parts.indexOf($scope.newPartName) != -1) {
-      $scope.newPartForm.$invalid = true;
-      return;
-    }
-    $scope.newPartForm.$invalid = false;
+    $scope.newPartForm.$invalid = 
+      !$scope.newPartPattern.exec($scope.newPartName) ||
+      _.contains($scope.parts, $scope.newPartName);
   }
 
   $scope.newPartPattern = /^[A-Za-z0-9]*$/;
@@ -148,9 +139,9 @@ function LabCtrl($scope) {
       // revisit closing docs here if sharejs is fixed
       openDoc = null;
       $scope.editor.setReadOnly(true);
-      for (id in $scope.cursors) {
-        $scope.editor.session.removeMarker($scope.cursors[id].marker);
-      }
+      _.each($scope.cursors, function(cursor) {
+        $scope.editor.session.removeMarker(cursor.marker);
+      });
       $scope.cursors = {};
     }
 
@@ -181,15 +172,14 @@ function LabCtrl($scope) {
           // before the ShareJS operation.
           // TODO: find a more efficient solution
           doc.on('remoteop', function(op) {
-            for (id in $scope.cursors) {
-              var cursor = $scope.cursors[id];
+            _.each($scope.cursors, function(cursor, id) {
               $scope.editor.session.removeMarker(cursor.marker);
               cursor.marker = $scope.editor.session.addMarker(
                 new Range(cursor.row, cursor.col, cursor.row, cursor.col + 1),
                 'shareCursor' + (id % 10),
                 'line',
                 true);
-            }
+            });
           });
         });
     } else {
@@ -219,11 +209,9 @@ function LabCtrl($scope) {
     if ($scope.newPartForm.$invalid || !$scope.newPartName)
       return;
 
-    var unique = true;
-    angular.forEach($scope.parts, function(part) {
-      if (part.name == $scope.newPartName) unique = false;
-    });
-    if (!unique) {
+    if (_.find($scope.parts, function(part) {
+      return part.name == $scope.newPartName;
+    })) {
       $scope.newPartName = '';
       return;
     }
@@ -244,7 +232,7 @@ function LabCtrl($scope) {
     $scope.$apply(function() {
       if (!$scope.user) return;
       $scope.home = $scope.user;
-      if (!($scope.home in $scope.homes)) {
+      if (!_.contains($scope.homes, $scope.home)) {
         $scope.homes.push($scope.home);
       }
       $scope.switchPart(null);
