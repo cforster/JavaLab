@@ -444,8 +444,9 @@ function LabCtrl($scope) {
     }    
     $('html').on(
       'click.dropdown.data-api touchstart.dropdown.data-api', function(e) {
-        if (e.srcElement.id == 'labNameInput' ||
-            e.srcElement.id == 'homeNameInput') {
+        if (e.srcElement &&
+            (e.srcElement.id == 'labNameInput' ||
+             e.srcElement.id == 'homeNameInput')) {
           return;
         }
         clearMenus();
