@@ -57,8 +57,12 @@ exports.attach = function(server) {
       'updateCursor': function(cursor) {
         sock.send(JSON.stringify({type: 'update', cursor: cursor}));
       },
-      'updateHomes': function(homes) {
-        sock.send(JSON.stringify({type: 'update', homes: homes}));
+      'updateHomes': function() {
+        sock.send(JSON.stringify(
+          {type: 'update', homes: _.map(homes, function(home) {
+            return { name: home.name,
+                     users: home.socks.length };
+          })}));
       },
       'updateLabs': function(labs) {
         sock.send(JSON.stringify({type: 'update', labs: labs}));
@@ -80,15 +84,15 @@ exports.attach = function(server) {
           name: homeName,
           socks: []
         }
-        _.each(homes, function(home) {
-          _.each(home.socks, function(sock) {
-            sock.updateHomes(_.keys(homes));
-          });
-        });
       }
       home = homes[homeName];
       home.socks.push(sockExports);
       cursor = {id: home.socks.length - 1};
+      _.each(homes, function(home) {
+        _.each(home.socks, function(sock) {
+          sock.updateHomes();
+        });
+      });
     }
     
     function removeFromHome() {
@@ -110,6 +114,11 @@ exports.attach = function(server) {
           } else {
             sock.updateCursor({id: i + pos});
           }
+        });
+      });
+      _.each(homes, function(home) {
+        _.each(home.socks, function(sock) {
+          sock.updateHomes();
         });
       });
     }
@@ -230,7 +239,7 @@ exports.attach = function(server) {
       util.log('labserver #' + id + ' error ' + errorCode + ': ' + reason);
     });
 
-    sockExports.updateHomes(_.keys(homes));
+    sockExports.updateHomes();
     labdb.listLabs(function(e, labs) {
       if (e) return sendError('Failed to list labs');
       sockExports.updateLabs(labs);

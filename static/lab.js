@@ -37,7 +37,8 @@ function LabCtrl($scope) {
         break;
       case 'update':
         if (r.homes) {
-          $scope.homes = r.homes;
+          $scope.homes = _.sortBy(r.homes,
+                                  function(home) { return -home.users; });
         } else if (r.labs) {
           $scope.labs = r.labs;
           if (!$scope.lab) {
@@ -232,8 +233,9 @@ function LabCtrl($scope) {
     $scope.$apply(function() {
       if (!$scope.user) return;
       $scope.home = $scope.user;
-      if (!_.contains($scope.homes, $scope.home)) {
-        $scope.homes.push($scope.home);
+      if (!_.find($scope.homes,
+                  function(home) { return home.name == $scope.home; })) {
+        $scope.homes.push({name: $scope.home, users: 1});
       }
       $scope.switchPart(null);
       socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
@@ -250,6 +252,7 @@ function LabCtrl($scope) {
   }
 
   $scope.newLab = function() {
+    // TODO: name validation
     $('#labDropdown').dropdown('toggle');
     $scope.lab = $scope.newLabName;
     $scope.labs.push($scope.lab);
@@ -266,9 +269,10 @@ function LabCtrl($scope) {
   }
 
   $scope.newHome = function() {
+    // TODO: name validation
     $('#homeDropdown').dropdown('toggle');
     $scope.home = $scope.newHomeName;
-    $scope.homes.push($scope.home);
+    $scope.homes.push({name: $scope.home, users: 1});
     $scope.newHomeName = '';
     $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));

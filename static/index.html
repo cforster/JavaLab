@@ -215,9 +215,14 @@
         <span class="caret"></span>
       </a>
       <ul class="dropdown-menu">
-        <li ng-repeat="homename in homes">
+        <li ng-repeat="home in homes">
           <a href="#" tabindex="-1"
-             ng-click="switchHome(homename)">{{ homename }}</a>
+             ng-click="switchHome(home.name)">
+            {{ home.name }}
+            <span style="float: right;">
+              {{ home.users }}&nbsp;<i class="icon-user"></i>
+            </span>
+          </a>
         </li>
         <li class="divider"></li>
         <form name="newHomeForm" style="margin: 0" ng-submit="newHome()">
