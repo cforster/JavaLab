@@ -1,4 +1,5 @@
 var async = require('async');
+var events = require('events');
 var fs = require('fs');
 var mongo = require('mongodb');
 var path = require('path');
@@ -11,13 +12,18 @@ var mongoServer = new mongo.Server(mongoDbHost, mongoDbPort,
                                    {auto_reconnect: true});
 var mongoDb = new mongo.Db('javalab', mongoServer, {safe: true});
 
+exports.eventEmitter = new events.EventEmitter();
+
 var db = null;
-mongoDb.open(function(e, dbOpened) {
-  if (e) throw ('Failed to connect to MongoDB at ' +
-                mongoDbHost + ':' + mongoDbPort + '\n' + e);
-  util.log('Connected to MongoDB at ' + mongoDbHost + ':' + mongoDbPort);
-  db = dbOpened;
-});
+exports.open = function() {
+  mongoDb.open(function(e, dbOpened) {
+    if (e) throw ('Failed to connect to MongoDB at ' +
+                  mongoDbHost + ':' + mongoDbPort + '\n' + e);
+    util.log('Connected to MongoDB at ' + mongoDbHost + ':' + mongoDbPort);
+    db = dbOpened;
+    exports.eventEmitter.emit('open');
+  });
+}
 
 exports.readLabPart = function(labName, partName, callback) {
   fs.readFile(path.join('labs', labName, partName), callback);
@@ -130,6 +136,16 @@ exports.updateHomeLab = function(home, labName, labParts, callback) {
       function(e, result) {
         return callback(e);
       });
+  });
+}
+
+exports.listHomes = function(callback) {
+  db.collection('homelabs', function(e, collection) {
+    if (e) return callback(e);
+    collection.distinct('home', function(e, result) {
+      if (e) return callback(e);
+      return callback(null, result);
+    });
   });
 }
 

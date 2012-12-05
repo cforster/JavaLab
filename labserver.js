@@ -15,6 +15,17 @@ var MAIN_BOILERPLATE =
 var nextId = 0;
 var homes = {};
 
+labdb.eventEmitter.once('open', function() {
+  labdb.listHomes(function(e, homeNames) {
+    if (e) throw "Failed to list homes: " + e;
+    _.each(homeNames, function(homeName) {
+      if (!(homeName in homes)) {
+        homes[homeName] = { name: homeName, socks: [] };
+      }
+    });
+  });
+});
+
 exports.attach = function(server) {
   var options = {server: server, path: '/labserver'};
   var wss = new ws.Server(options);

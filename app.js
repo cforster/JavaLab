@@ -21,5 +21,7 @@ var options = {
 };
 require('share').server.attach(http_server, options);
 
+require('./labdb').open();
+
 var port = process.env.npm_package_config_port || 80;
 http_server.listen(port);

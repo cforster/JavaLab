@@ -243,6 +243,7 @@ function LabCtrl($scope) {
   });
 
   $scope.switchLab = function(labName) {
+    if ($scope.lab == labName) return;
     $scope.lab = labName;
     $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
@@ -258,6 +259,7 @@ function LabCtrl($scope) {
   }
 
   $scope.switchHome = function(homeName) {
+    if ($scope.home == homeName) return;
     $scope.home = homeName;
     $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
