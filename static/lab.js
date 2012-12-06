@@ -55,8 +55,8 @@ function LabCtrl($scope) {
             } else {
               $scope.switchPart($scope.parts[0] || null);
             }
-          } else {
-            $scope.switchPart($scope.parts[0] || null);
+          } else if ($scope.parts.length > 0) {
+            $scope.switchPart($scope.parts[0]);
           }
         } else if (r.cursor) {
           var cursor = r.cursor;
@@ -132,6 +132,7 @@ function LabCtrl($scope) {
       $scope.activePart = part.name;
     } else {
       $scope.activePart = null;
+      socket.send(JSON.stringify({type: 'setLabPart', labPart: ''}));
     }
 
     if (openDoc) {
@@ -159,6 +160,7 @@ function LabCtrl($scope) {
             // another doc became active while this doc was opening
             return;
           }
+          socket.send(JSON.stringify({type: 'setLabPart', labPart: part.name}));
           openDoc = doc;
           doc.attach_ace($scope.editor);
           $scope.editor.gotoLine(1, 0, false);

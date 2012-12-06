@@ -20,7 +20,11 @@ labdb.eventEmitter.once('open', function() {
     if (e) throw "Failed to list homes: " + e;
     _.each(homeNames, function(homeName) {
       if (!(homeName in homes)) {
-        homes[homeName] = { name: homeName, socks: [] };
+        homes[homeName] = {
+          name: homeName,
+          socks: [],
+          labs: {}
+        };
       }
     });
   });
@@ -36,6 +40,7 @@ exports.attach = function(server) {
     var user = '';
     var home = null;
     var lab = '';
+    var labPart = '';
     var cursor = {};
 
     var javaRunner = new javarunner.JavaRunner(function(act) {
@@ -50,6 +55,15 @@ exports.attach = function(server) {
     var sockExports = {
       'getCursor': function() {
         return cursor;
+      },
+      'getLab': function() {
+        return lab;
+      },
+      'getLabPart': function() {
+        return labPart;
+      },
+      'getUser': function() {
+        return user;
       },
       'setCursorId': function(id) {
         cursor.id = id;
@@ -82,7 +96,8 @@ exports.attach = function(server) {
       if (!(homeName in homes)) {
         homes[homeName] = {
           name: homeName,
-          socks: []
+          socks: [],
+          labs: {}
         }
       }
       home = homes[homeName];
@@ -122,7 +137,36 @@ exports.attach = function(server) {
         });
       });
     }
- 
+
+    function updateHomeLabParts(labName) {
+      if (!(labName in home.labs)) {
+        labdb.getOrCreateHomeLab(home.name, labName, function(e, labInfo) {
+          if (e) return sendError('Failed to get home lab', e);
+          if (!(labName in home.labs)) {
+            home.labs[labName] = labInfo;
+          }
+          setLabPartUsers();
+        });
+      } else {
+        setLabPartUsers();
+      }
+
+      function setLabPartUsers() {
+        var labParts = home.labs[labName].labParts;
+        _.each(labParts, function(part) {
+          part.users = [];
+          _.each(home.socks, function(sock) {
+            if (sock.getLab() == labName && sock.getLabPart() == part.name) {
+              part.users.push(sock.getUser());
+            }
+          });
+        });
+        _.each(home.socks, function(sock) {
+          sock.updateLabParts(labName, labParts);
+        });
+      }
+    }
+
     sock.on('message', function(message) {
       var req;
       try {
@@ -142,41 +186,39 @@ exports.attach = function(server) {
       case 'setHome':
         removeFromHome();
         addToHome(req.home);
-        if (lab) {
-          labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
-            if (e) return sendError('Failed to get home lab', e);
-            sockExports.updateLabParts(lab, labInfo.labParts);
-          });
-        }
+        if (lab) updateHomeLabParts(lab);
         break;
       case 'setLab':
         lab = req.lab;
-        labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
-          if (e) return sendError('Failed to get home lab', e);
-          sockExports.updateLabParts(lab, labInfo.labParts);
-        });
+        if (lab) updateHomeLabParts(lab);
+        break;
+      case 'setLabPart':
+        labPart = req.labPart;
+        if (lab) updateHomeLabParts(lab);
         break;
       case 'addLabPart':
         if (!lab) return sendError('Lab has not been set');
-        labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
+        var startLab = lab;
+        labdb.getOrCreateHomeLab(home.name, startLab, function(e, labInfo) {
           if (e) return sendError('Failed to get home lab', e);
           labInfo.labParts.push({name: req.partName, predefined: false});
-          labdb.updateHomeLab(home.name, lab, labInfo.labParts, function(e) {
+          labdb.updateHomeLab(home.name, startLab, labInfo.labParts, function(e) {
             if (e) return sendError('Failed to update home lab', e);
           });
+          home.labs[startLab] = labInfo;
           var mainBoilerplate = MAIN_BOILERPLATE.replace('Main', req.partName);
           labdb.populateLabPart(
-            home.name, lab, req.partName, mainBoilerplate, false, function(e) {
+            home.name, startLab, req.partName, mainBoilerplate, false,
+            function(e) {
               if (e) return sendError('Failed to populate new lab part', e);
             });
-          _.each(home.socks, function(sock) {
-            sock.updateLabParts(lab, labInfo.labParts);
-          });
+          updateHomeLabParts(startLab);
         });
         break;
       case 'deleteLabPart':
         if (!lab) return sendError('Lab has not been set');
-        labdb.getOrCreateHomeLab(home.name, lab, function(e, labInfo) {
+        var startLab = lab;
+        labdb.getOrCreateHomeLab(home.name, startLab, function(e, labInfo) {
           if (e) return sendError('Failed to get home lab', e);
           var newLabParts = _.reject(labInfo.labParts, function(labPart) {
             return labPart.name == req.partName;
@@ -184,12 +226,11 @@ exports.attach = function(server) {
           if (labInfo.labParts.length == newLabParts.length) {
             return sendError('Lab part ' + req.partName + ' not found');
           }
-          labdb.updateHomeLab(home.name, lab, newLabParts, function(e) {
+          labdb.updateHomeLab(home.name, startLab, newLabParts, function(e) {
             if (e) return sendError('Failed to update home lab', e);
           });
-          _.each(home.socks, function(sock) {
-            sock.updateLabParts(lab, newLabParts);
-          });
+          home.labs[startLab].labParts = newLabParts;
+          updateHomeLabParts(startLab);
         });
         break;
       case 'revertLabPart':
@@ -232,6 +273,8 @@ exports.attach = function(server) {
       util.log('labserver #' + id + ' closed');
       javaRunner.stop();
       javaRunner.cleanup();
+      labPart = '';
+      if (lab) updateHomeLabParts(lab);
       removeFromHome();
     });
 
