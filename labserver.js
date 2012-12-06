@@ -69,9 +69,11 @@ exports.attach = function(server) {
         cursor.id = id;
       },
       'updateCursor': function(cursor) {
+        if (sock.readyState != ws.OPEN) return;
         sock.send(JSON.stringify({type: 'update', cursor: cursor}));
       },
       'updateHomes': function() {
+        if (sock.readyState != ws.OPEN) return;
         sock.send(JSON.stringify(
           {type: 'update', homes: _.map(homes, function(home) {
             return { name: home.name,
@@ -79,15 +81,18 @@ exports.attach = function(server) {
           })}));
       },
       'updateLabs': function(labs) {
+        if (sock.readyState != ws.OPEN) return;
         sock.send(JSON.stringify({type: 'update', labs: labs}));
       },
       'updateLabParts': function(labToUpdate, labParts) {
+        if (sock.readyState != ws.OPEN) return;
         if (lab != labToUpdate) return;
         sock.send(JSON.stringify({type: 'update', labParts: labParts}));
       }
     };
 
     function sendError(errorText, e) {
+      if (sock.readyState != ws.OPEN) return;
       if (e) errorText += ': ' + e;
       sock.send(JSON.stringify({type: 'error', text: errorText}));
     }
