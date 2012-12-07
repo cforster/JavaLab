@@ -1,3 +1,17 @@
+angular.module('JavaLabModule', ['ngSanitize']).
+  filter('highlightSubstring', function() {
+    return function(input, search) {
+      if (!search || search.length == 0) return input;
+      var match = input.match(search);
+      if (!match) return input;
+      return (input.substring(0, match.index) +
+              '<b>' +
+              input.substring(match.index, match.index + match[0].length) +
+              '</b>' +
+              input.substring(match.index + match[0].length));
+    }
+  });
+
 function LabCtrl($scope) {
   if (ace.require) {
     Range = ace.require('ace/range').Range;
@@ -239,10 +253,10 @@ function LabCtrl($scope) {
                   function(home) { return home.name == $scope.home; })) {
         $scope.homes.push({name: $scope.home, users: 1});
       }
-      $scope.switchPart(null);
       socket.send(JSON.stringify({type: 'setUser', user: $scope.user}));
       socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
       socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+      $scope.switchPart(null);
     });
   });
 
@@ -263,21 +277,82 @@ function LabCtrl($scope) {
     socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
   }
 
+  $scope.matchesNewHome = function(home) {
+    if (!$scope.newHomeName) return true;
+    return home.name.indexOf($scope.newHomeName) != -1;
+  }
+
   $scope.switchHome = function(homeName) {
     if ($scope.home == homeName) return;
     $scope.home = homeName;
-    $scope.switchPart(null);
+    $scope.newHomeName = '';
     socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
+    $scope.switchPart(null);
   }
 
+  var newHomePattern = /^[A-Za-z0-9]*$/;
+  $scope.newHomeNameChanged = function() {
+    $scope.newHomeForm.$invalid = !newHomePattern.exec($scope.newHomeName);
+    var input = $('#homeNameInput')[0];
+    if (input.value.length == 0) return;
+    if (($.browser.mozilla && input.selectionStart == input.value.length) ||
+        ($.browser.webkit && input.selectionStart == input.value.length - 1)) {
+      var closestHome = _.find($scope.homes, function(home) {
+        return home.name.substring(0, input.value.length) == input.value;
+      });
+      if (closestHome) {
+        var name = closestHome.name;
+        var len = input.value.length;
+        window.setTimeout(function() {
+          input.value = name;
+          input.selectionStart = len;
+          input.selectionEnd = input.value.length;
+        }, 0);
+      }
+    }
+  }
+
+  $('#homeNameInput').keydown(function(event) {
+    if (event.which == 13) {
+      if (this.selectionEnd - this.selectionStart > 0) {
+        this.selectionStart = this.value.length;
+        this.selectionEnd = this.value.length;
+        event.preventDefault();
+        var value = this.value;
+        $scope.$apply(function() {
+          $scope.newHomeName = value;
+        });
+      }
+    }
+    if (event.which == 8) {
+      if (this.selectionEnd == this.value.length &&
+          this.selectionStart != this.selectionEnd &&
+          this.selectionStart > 0) {
+        event.preventDefault();
+        var value = this.value.substring(0, this.selectionStart - 1);
+        this.value = value;
+        $scope.$apply(function() {
+          $scope.newHomeName = value;
+        });
+      } else if (this.selectionEnd == this.value.length &&
+                 this.selectionStart == this.selectionEnd) {
+        event.preventDefault();
+        var value = this.value.substring(0, this.selectionStart - 1);
+        $scope.$apply(function() {
+          $scope.newHomeName = value;
+        });
+      }
+    }
+  });
+
   $scope.newHome = function() {
-    // TODO: name validation
+    if ($scope.newHomeForm.$invalid) return;
     $('#homeDropdown').dropdown('toggle');
     $scope.home = $scope.newHomeName;
     $scope.homes.push({name: $scope.home, users: 1});
     $scope.newHomeName = '';
-    $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setHome', home: $scope.home}));
+    $scope.switchPart(null);
   }
 
   $scope.run = function() {
@@ -446,9 +521,10 @@ function LabCtrl($scope) {
     }    
     $('html').on(
       'click.dropdown.data-api touchstart.dropdown.data-api', function(e) {
-        if (e.srcElement &&
-            (e.srcElement.id == 'labNameInput' ||
-             e.srcElement.id == 'homeNameInput')) {
+        var src = e.srcElement || e.target;
+        if (src &&
+            (src.id == 'labNameInput' ||
+             src.id == 'homeNameInput')) {
           return;
         }
         clearMenus();

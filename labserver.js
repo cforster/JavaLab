@@ -181,7 +181,7 @@ exports.attach = function(server) {
       }
 
       if (!home && req.type != 'setHome' && req.type != 'setUser') {
-        return sendError('Home has not been set');
+        return sendError('Home has not been set: ' + message);
       }
 
       switch (req.type) {

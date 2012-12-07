@@ -1,11 +1,12 @@
 <!doctype html>
-<html ng-app>
+<html ng-app="JavaLabModule">
 <head>
   <title>Java Lab</title>
   <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
   <script src="bootstrap/js/bootstrap.min.js"></script>
-  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.2/angular.min.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.3/angular.min.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.3/angular-sanitize.min.js"></script>
   <script src="http://underscorejs.org/underscore-min.js"></script>
   <script src="ace/ace.js"></script>
   <script src="share/share.js"></script>
@@ -190,13 +191,13 @@
     <div class="header-buttons btn-group">
       <a id="labDropdown" class="btn dropdown-toggle"
          data-toggle="dropdown" href="#">
-        <i class="icon-folder-open"></i>&nbsp;{{ lab }}
+        <i class="icon-folder-open"></i>&nbsp;{{lab}}
         <span class="caret"></span>
       </a>
       <ul class="dropdown-menu">
         <li ng-repeat="labname in labs">
           <a href="#" tabindex="-1"
-             ng-click="switchLab(labname)">{{ labname }}</a>
+             ng-click="switchLab(labname)">{{labname}}</a>
         </li>
         <li class="divider"></li>
         <form name="newLabForm" style="margin: 0" ng-submit="newLab()">
@@ -211,27 +212,31 @@
     <div class="header-buttons btn-group">
       <a id="homeDropdown" class="btn dropdown-toggle"
          data-toggle="dropdown" href="#">
-        <i class="icon-home"></i>&nbsp;{{ home }}
+        <i class="icon-home"></i>&nbsp;{{home}}
         <span class="caret"></span>
       </a>
       <ul class="dropdown-menu">
-        <li ng-repeat="home in homes">
+        <li ng-repeat="home in homes | filter:matchesNewHome | limitTo:10">
           <a href="#" tabindex="-1"
              ng-click="switchHome(home.name)"
              style="position: relative">
-            <span style="position: absolute; left: 10px">{{ home.name }}</span>
+            <span style="position: absolute; left: 10px"
+                  ng-bind-html="home.name|highlightSubstring:newHomeName">
+            </span>
             &nbsp;
             <span style="position: absolute; right: 10px">
-              {{ home.users }}&nbsp;<i class="icon-user"></i>
+              {{home.users}}&nbsp;<i class="icon-user"></i>
             </span>
           </a>
         </li>
         <li class="divider"></li>
         <form name="newHomeForm" style="margin: 0" ng-submit="newHome()">
-          <div class="control-group" style="margin: 0">
+          <div class="control-group" style="margin: 0"
+               ng-class="{error: newHomeForm.$invalid}">
             <input type="text" id="homeNameInput"
                    style="margin-left: 8px; margin-right: 8px"
-                   ng-model="newHomeName" placeholder="Start new home">
+                   ng-change="newHomeNameChanged()"
+                   ng-model="newHomeName" placeholder="Home name">
           </div>
         </form>
       </ul>
