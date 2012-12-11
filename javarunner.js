@@ -22,7 +22,10 @@ fs.mkdir(DATA_PATH, function(e) {
 function getCPUSeconds(pid, callback) {
   fs.readFile('/proc/' + pid + '/stat', function(e, data) {
     if (e && (e.code == 'ENOENT' || e.code == 'ESRCH')) callback(null);
-    if (e) throw e;
+    if (e) {
+      util.log('Error reading from /proc/' + pid + '/stat: ' + e);
+      callback(null);
+    }
     var parts = data.toString().split(' ');
     var cpuTime = (Number(parts[13]) + Number(parts[14])) / PROC_CPU_HZ;
     callback(cpuTime);
@@ -32,6 +35,9 @@ function getCPUSeconds(pid, callback) {
 function parseJavacErrors(srcPath, stderr) {
   var errorStart = new RegExp('^' + srcPath + ':(\\d+): (.*)$');
   var lines = stderr.match(/[^\r\n]+/g);
+  if (!lines) {
+    return [];
+  }
   var errors = [];
   var error = null;
   for (var i = 0; i < lines.length - 1; i++) {
