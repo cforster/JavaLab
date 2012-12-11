@@ -39,12 +39,15 @@ function parseJavacErrors(srcPath, stderr) {
     if (match) {
       error = {line: Number(match[1]), text: match[2], detail: '', col: 0};
       errors.push(error);
-    } else {
+    } else if (error) {
       error.detail += lines[i] + '\n';
       var caretMatch = lines[i].match(/^(\s*)\x5E\s*$/);
       if (caretMatch) {
 	error.col = caretMatch[1].length;
       }
+    } else {
+      util.log('Unexpected javac output line: ' + lines[i] +
+               '\nFull output:\n' + stderr);
     }
   }
   return errors;
