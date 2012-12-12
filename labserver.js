@@ -35,7 +35,7 @@ exports.attach = function(server) {
   var wss = new ws.Server(options);
   wss.on('connection', function(sock) {
     var id = nextId++;
-    util.log('labserver #' + id + ' connected');
+    util.log('labserver ' + id + ' connected');
 
     var user = '';
     var home = null;
@@ -186,22 +186,27 @@ exports.attach = function(server) {
 
       switch (req.type) {
       case 'setUser':
+        util.log('labserver ' + id + ' sets user to ' + req.user);
         user = req.user;
         break;
       case 'setHome':
+        util.log('labserver ' + id + ' sets home to ' + req.home);
         removeFromHome();
         addToHome(req.home);
         if (lab) updateHomeLabParts(lab);
         break;
       case 'setLab':
+        util.log('labserver ' + id + ' sets lab to ' + req.lab);
         lab = req.lab;
         if (lab) updateHomeLabParts(lab);
         break;
       case 'setLabPart':
+        util.log('labserver ' + id + ' sets lab part to ' + req.labPart);
         labPart = req.labPart;
         if (lab) updateHomeLabParts(lab);
         break;
       case 'addLabPart':
+        util.log('labserver ' + id + ' creates lab part ' + req.partName);
         if (!lab) return sendError('Lab has not been set');
         var startLab = lab;
         labdb.getOrCreateHomeLab(home.name, startLab, function(e, labInfo) {
@@ -221,6 +226,7 @@ exports.attach = function(server) {
         });
         break;
       case 'deleteLabPart':
+        util.log('labserver ' + id + ' deletes lab part ' + req.partName);
         if (!lab) return sendError('Lab has not been set');
         var startLab = lab;
         labdb.getOrCreateHomeLab(home.name, startLab, function(e, labInfo) {
@@ -239,6 +245,7 @@ exports.attach = function(server) {
         });
         break;
       case 'revertLabPart':
+        util.log('labserver ' + id + ' reverts lab part ' + req.partName);
         if (!lab) return sendError('Lab has not been set');
         labdb.readLabPart(lab, req.partName, function(e, src) {
           if (e) return sendError('Failed to read lab part for lab ' +
@@ -275,7 +282,7 @@ exports.attach = function(server) {
     });
 
     sock.on('close', function() {
-      util.log('labserver #' + id + ' closed');
+      util.log('labserver ' + id + ' closed');
       javaRunner.stop();
       javaRunner.cleanup();
       labPart = '';
@@ -284,7 +291,7 @@ exports.attach = function(server) {
     });
 
     sock.on('error', function(reason, errorCode) {
-      util.log('labserver #' + id + ' error ' + errorCode + ': ' + reason);
+      util.log('labserver ' + id + ' error ' + errorCode + ': ' + reason);
     });
 
     sockExports.updateHomes();

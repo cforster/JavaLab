@@ -81,7 +81,7 @@ function JavaRunner(callback) {
 }
 
 JavaRunner.prototype.setState = function(state) {
-  util.log(this.id + ' enters state ' + state);
+  util.log('javarunner ' + this.id + ' enters state ' + state);
   this.state = state;
   this.callback({state: state});
 }
@@ -115,7 +115,8 @@ JavaRunner.prototype.compileRun = function(src) {
   }
   self.srcPath = path.join(self.dir, self.className + '.java');
   self.compile(src, function(result) {
-    util.log(self.id + ' compile done (error ' + result.code + ')');
+    util.log('javarunner ' + self.id +
+             ' compile done (error ' + result.code + ')');
     if (result.code == 0) {
       self.setState('run');
       self.java = child_process.spawn('java',
@@ -131,7 +132,7 @@ JavaRunner.prototype.compileRun = function(src) {
         self.callback({stdout: String(stderr)});
       });
       self.java.on('exit', function(code) {
-	util.log(self.id + ' run done (error ' + code + ')');
+	util.log('javarunner ' + self.id + ' run done (error ' + code + ')');
 	self.java = null;
 	if (self.intervalId) {
 	  clearInterval(self.intervalId);
@@ -145,7 +146,7 @@ JavaRunner.prototype.compileRun = function(src) {
 	if (self.java) {
 	  getCPUSeconds(self.java.pid, function(cpuSeconds) {
 	    if (cpuSeconds > MAX_JAVA_CPU_SECONDS) {
-	      util.log(self.id + ' run killed (' +
+	      util.log('javarunner ' + self.id + ' run killed (' +
 		       cpuSeconds + ' cpu seconds used)');
 	      self.killJavaProcess();
               self.callback(
