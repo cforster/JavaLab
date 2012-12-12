@@ -162,7 +162,7 @@ exports.attach = function(server) {
           part.users = [];
           _.each(home.socks, function(sock) {
             if (sock.getLab() == labName && sock.getLabPart() == part.name) {
-              part.users.push(sock.getUser());
+              part.users.push({user: sock.getUser(), id: sock.getCursor().id});
             }
           });
         });

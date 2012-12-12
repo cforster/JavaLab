@@ -257,8 +257,9 @@
             <i class="icon-repeat" ng-click="revertPart(part)"
                ng-class="{hide: !part.predefined}" title="Revert"></i>
             {{part.name}}
-            <span style="color: black; margin-left: 8px">
-              {{part.users.length}}&nbsp;<i class="icon-user"></i>
+            <span ng-repeat="user in part.users">
+              <i class="icon-user" title="{{user.user}}"
+                 style="margin-right: 0"></i>
             </span>
           </a>
         </li>
