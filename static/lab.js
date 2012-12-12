@@ -26,6 +26,7 @@ function LabCtrl($scope) {
   $scope.labs = [];
   $scope.servermsg = 'disconnected';
   $scope.cursors = {};
+  $scope.recentlyCreatedParts = [];
 
   var socket = new WebSocket('ws://' + document.location.host + '/labserver');
   socket.onopen = function(event) {
@@ -59,7 +60,16 @@ function LabCtrl($scope) {
             $scope.lab = $scope.labs[0] || null;
           }
         } else if (r.labParts) {
-          $scope.parts = r.labParts;
+          var serverUnknownParts = [];
+          _.each($scope.recentlyCreatedParts, function(part) {
+            if (!_.find(r.labParts,
+                        function(p) { return p.name == part.name; })) {
+              serverUnknownParts.push(part);
+            }
+          });
+          $scope.recentlyCreatedParts =
+            _.intersection($scope.recentlyCreatedParts, serverUnknownParts);
+          $scope.parts = r.labParts.concat(serverUnknownParts);
           if ($scope.activePart) {
             var activePart = _.find($scope.parts, function(part) {
               return part.name == $scope.activePart;
@@ -213,6 +223,7 @@ function LabCtrl($scope) {
       if (i == $scope.parts.length) i--;
       $scope.switchPart($scope.parts.length == 0 ? null : $scope.parts[i]);
     }
+    $scope.recentlyCreatedParts = _.without($scope.recentlyCreatedParts, part);
   }
 
   $scope.revertPart = function(part) {
@@ -236,6 +247,7 @@ function LabCtrl($scope) {
     var newPart = {name: $scope.newPartName, predefined: false};
     $scope.newPartName = '';
     $scope.parts.push(newPart);
+    $scope.recentlyCreatedParts.push(newPart);
     $scope.switchPart(newPart);
     socket.send(JSON.stringify({type: 'addLabPart', partName: newPart.name}));
   }
