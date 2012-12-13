@@ -191,14 +191,28 @@ function LabCtrl($scope) {
           $scope.editor.scrollToRow(0);
           $scope.editor.setReadOnly(false);
 
+          // We need to delay this because the Ace change handler adds
+          // the new undo information asynchronously. This is a racy
+          // solution but practically should work fine.
+          window.setTimeout(function() {
+            $scope.editor.getSession().getUndoManager().reset();
+          }, 5);
+
           if (socket.readyState == 1) {
             socket.send(JSON.stringify({type: 'getCursors'}));
           }
 
-          // This is needed because the cursor change may arrive
-          // before the ShareJS operation.
-          // TODO: find a more efficient solution
           doc.on('remoteop', function(op) {
+            // We need to delay this because the Ace change handler adds
+            // the new undo information asynchronously. This is a racy
+            // solution but practically should work fine.
+            window.setTimeout(function() {
+              $scope.editor.getSession().getUndoManager().reset();
+            }, 5);
+
+            // This is needed because the cursor change may arrive
+            // before the ShareJS operation.
+            // TODO: find a more efficient solution
             _.each($scope.cursors, function(cursor, id) {
               $scope.editor.session.removeMarker(cursor.marker);
               cursor.marker = $scope.editor.session.addMarker(
@@ -211,6 +225,7 @@ function LabCtrl($scope) {
         });
     } else {
       $scope.editor.setValue('No part selected');
+      $scope.editor.getSession().getUndoManager().reset();
     }
   }
 
