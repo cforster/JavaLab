@@ -1,3 +1,4 @@
+var _ = require('underscore')._;
 var async = require('async');
 var events = require('events');
 var fs = require('fs');
@@ -96,10 +97,24 @@ exports.populateLabPart = function(home, labName, partName, src, force, callback
   });
 }
 
+var homeLabCallback = {};
 exports.getOrCreateHomeLab = function(home, labName, callback) {
+
   readHomeLab(home, labName, function(e, item) {
     if (e) return callback(e);
     if (item) return callback(null, item);
+
+    var homeLabKey= home+":"+labName;
+    if(homeLabCallback[homeLabKey]==undefined) {
+      homeLabCallback[homeLabKey]=[];
+    }
+    else {
+      homeLabCallback[homeLabKey].push(function(){
+	exports.getOrCreateHomeLab(home, labName, callback);
+      });
+      return;
+    }
+
 
     // home lab does not exist in DB, create it
     readLab(labName, function(e, labPartData) {
@@ -118,7 +133,11 @@ exports.getOrCreateHomeLab = function(home, labName, callback) {
           if (e) return callback(e);
           readHomeLab(home, labName, function(e, item) {
             if (e) return callback(e);
-            return callback(null, item);
+            _.each(homeLabCallback[homeLabKey], function(f){  
+	      f();
+	    });
+	    delete homeLabCallback[homeLabKey];
+	    return callback(null, item);
           });
         });
       });
