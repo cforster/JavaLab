@@ -141,6 +141,7 @@ exports.attach = function(server) {
           sock.updateHomes();
         });
       });
+      if (lab) updateHomeLabParts(lab);
     }
 
     function updateHomeLabParts(labName) {
