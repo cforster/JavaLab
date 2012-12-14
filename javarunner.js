@@ -77,6 +77,7 @@ function JavaRunner(callback) {
   this.srcPath = null;
   this.className = null;
   this.java = null;
+  this.javac = null;
   this.intervalId = null;
 }
 
@@ -170,6 +171,10 @@ JavaRunner.prototype.stdin = function(stdin) {
 
 JavaRunner.prototype.stop = function() {
   this.killJavaProcess();
+  if (this.javac) {
+    this.javac.kill();
+    this.javac = null;
+  }
   this.setState('idle');
 }
 
@@ -179,6 +184,7 @@ JavaRunner.prototype.compile = function(src, callback) {
   makeDir();
 
   function makeDir() {
+    util.log('javarunner ' + self.id + ' mkdir ' + self.dir);
     fs.mkdir(self.dir, 0777, function(e) {
       if (e && e.code != 'EEXIST') throw e;
       writeSrcFile();
@@ -186,6 +192,7 @@ JavaRunner.prototype.compile = function(src, callback) {
   }
 
   function writeSrcFile() {
+    util.log('javarunner ' + self.id + ' write src file ' + self.srcPath);
     fs.writeFile(self.srcPath, src, function(e) {
       if (e) throw e;
       runJavac();
@@ -193,17 +200,20 @@ JavaRunner.prototype.compile = function(src, callback) {
   }
 
   function runJavac() {
-    var javac = child_process.spawn('javac', [self.srcPath]);
+    util.log('javarunner ' + self.id + ' javac run');
+    self.javac = child_process.spawn('javac', [self.srcPath]);
     var stdout = '';
     var stderr = '';
-    javac.stdin.end();
-    javac.stdout.on('data', function(data) {
+    self.javac.stdin.end();
+    self.javac.stdout.on('data', function(data) {
       stdout += data;
     });
-    javac.stderr.on('data', function(data) {
+    self.javac.stderr.on('data', function(data) {
       stderr += data;
     });
-    javac.on('exit', function(code) {
+    self.javac.on('exit', function(code) {
+      util.log('javarunner ' + self.id + ' javac done');
+      self.javac = null;
       callback({'code': code,
                 'stdout': stdout,
                 'stderr': stderr});
