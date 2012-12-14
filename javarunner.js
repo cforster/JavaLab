@@ -24,7 +24,7 @@ function getCPUSeconds(pid, callback) {
     if (e && (e.code == 'ENOENT' || e.code == 'ESRCH')) callback(null);
     if (e) {
       util.log('Error reading from /proc/' + pid + '/stat: ' + e);
-      callback(null);
+      return callback(null);
     }
     var parts = data.toString().split(' ');
     var cpuTime = (Number(parts[13]) + Number(parts[14])) / PROC_CPU_HZ;
