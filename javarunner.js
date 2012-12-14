@@ -49,7 +49,7 @@ function parseJavacErrors(srcPath, stderr) {
       error.detail += lines[i] + '\n';
       var caretMatch = lines[i].match(/^(\s*)\x5E\s*$/);
       if (caretMatch) {
-	error.col = caretMatch[1].length;
+        error.col = caretMatch[1].length;
       }
     } else {
       util.log('Unexpected javac output line: ' + lines[i] +
@@ -120,11 +120,11 @@ JavaRunner.prototype.compileRun = function(src) {
     if (result.code == 0) {
       self.setState('run');
       self.java = child_process.spawn('java',
-				      ['-Djava.security.manager',
-				       '-Djava.security.policy==' + POLICY_FILE,
-				       '-Xmx' + MAX_JAVA_HEAP,
-				       '-Xss' + MAX_JAVA_STACK,
-				       '-cp', self.dir, self.className]);
+                                      ['-Djava.security.manager',
+                                       '-Djava.security.policy==' + POLICY_FILE,
+                                       '-Xmx' + MAX_JAVA_HEAP,
+                                       '-Xss' + MAX_JAVA_STACK,
+                                       '-cp', self.dir, self.className]);
       self.java.stdout.on('data', function(stdout) {
         self.callback({stdout: String(stdout)});
       });
@@ -132,29 +132,29 @@ JavaRunner.prototype.compileRun = function(src) {
         self.callback({stdout: String(stderr)});
       });
       self.java.on('exit', function(code) {
-	util.log('javarunner ' + self.id + ' run done (error ' + code + ')');
-	self.java = null;
-	if (self.intervalId) {
-	  clearInterval(self.intervalId);
-	  self.intervalId = null;
-	}
+        util.log('javarunner ' + self.id + ' run done (error ' + code + ')');
+        self.java = null;
+        if (self.intervalId) {
+          clearInterval(self.intervalId);
+          self.intervalId = null;
+        }
         if (self.state != 'compile') {
           self.setState('idle');
         }
       });
       self.intervalId = setInterval(function() {
-	if (self.java) {
-	  getCPUSeconds(self.java.pid, function(cpuSeconds) {
-	    if (cpuSeconds > MAX_JAVA_CPU_SECONDS) {
-	      util.log('javarunner ' + self.id + ' run killed (' +
-		       cpuSeconds + ' cpu seconds used)');
-	      self.killJavaProcess();
+        if (self.java) {
+          getCPUSeconds(self.java.pid, function(cpuSeconds) {
+            if (cpuSeconds > MAX_JAVA_CPU_SECONDS) {
+              util.log('javarunner ' + self.id + ' run killed (' +
+                       cpuSeconds + ' cpu seconds used)');
+              self.killJavaProcess();
               self.callback(
                 {stdout: 'Process CPU seconds ' + cpuSeconds +
-		 ' exceeded ' + MAX_JAVA_CPU_SECONDS + ' second limit.\n'});
-	    }
-	  });
-	}
+                 ' exceeded ' + MAX_JAVA_CPU_SECONDS + ' second limit.\n'});
+            }
+          });
+        }
       }, MAX_JAVA_CPU_SECONDS * 100);
     } else {
       var errors = parseJavacErrors(self.srcPath, result.stderr);
@@ -205,8 +205,8 @@ JavaRunner.prototype.compile = function(src, callback) {
     });
     javac.on('exit', function(code) {
       callback({'code': code,
-		'stdout': stdout,
-		'stderr': stderr});
+                'stdout': stdout,
+                'stderr': stderr});
     });
   }
 }
@@ -222,11 +222,11 @@ JavaRunner.prototype.cleanup = function() {
     var filesDeleted = 0;
     for (var i = 0; i < files.length; i++) {
       fs.unlink(path.join(self.dir, files[i]), function(e) {
-	if (e) throw e;
-	filesDeleted++;
-	if (filesDeleted == files.length) {
-	  fs.rmdir(self.dir);
-	}
+        if (e) throw e;
+        filesDeleted++;
+        if (filesDeleted == files.length) {
+          fs.rmdir(self.dir);
+        }
       });
     }
   });
