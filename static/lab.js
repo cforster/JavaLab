@@ -52,8 +52,11 @@ function LabCtrl($scope) {
         break;
       case 'update':
         if (r.homes) {
-          $scope.homes = _.sortBy(r.homes,
-                                  function(home) { return -home.users; });
+          $scope.homes = _.sortBy(r.homes, function(home) {
+            // this works because accessTime >> users
+            if (home.accessTime) return -home.accessTime;
+            return -home.users;
+          });
         } else if (r.labs) {
           $scope.labs = r.labs;
           if (!$scope.lab) {

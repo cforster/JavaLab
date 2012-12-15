@@ -175,7 +175,7 @@ exports.getUser = function(user, callback) {
     collection.findOne({user: user}, function(e, item) {
       if (e) return callback(e);
       if (item) return callback(null, item);
-      return callback(null, {user: user});
+      return callback(null, {user: user, homeAccessTimes: {}});
     });
   });
 }

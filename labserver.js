@@ -78,7 +78,8 @@ exports.attach = function(server) {
         sock.send(JSON.stringify(
           {type: 'update', homes: _.map(homes, function(home) {
             return { name: home.name,
-                     users: home.socks.length };
+                     users: home.socks.length,
+                     accessTime: user.homeAccessTimes[home.name] };
           })}));
       },
       'updateLabs': function(labs) {
@@ -192,19 +193,25 @@ exports.attach = function(server) {
         if (req.user in users) {
           user = users[req.user];
         } else {
-          user = {user: req.user};
+          user = {user: req.user, homeAccessTimes: {}};
           labdb.getUser(req.user, function(e, item) {
+            if (e) return util.log('labserver ' + id + ' getUser failed: ' + e);
             if (req.user in users) {
               user = users[req.user];
             } else {
               user = item;
               users[req.user] = user;
             }
+            sockExports.updateHomes();
           });
         }
         break;
       case 'setHome':
         util.log('labserver ' + id + ' sets home to ' + req.home);
+        user.homeAccessTimes[req.home] = new Date().getTime();
+        labdb.updateUser(user, function(e) {
+          if (e) util.log('labserver ' + id + ' updateUser failed: ' + e);
+        });
         removeFromHome();
         addToHome(req.home);
         if (lab) updateHomeLabParts(lab);
@@ -308,7 +315,6 @@ exports.attach = function(server) {
       util.log('labserver ' + id + ' error ' + errorCode + ': ' + reason);
     });
 
-    sockExports.updateHomes();
     labdb.listLabs(function(e, labs) {
       if (e) return sendError('Failed to list labs');
       sockExports.updateLabs(labs);
