@@ -173,7 +173,11 @@
     .shareCursor9 { border-left-color: #880000 }
   </style>
 </head>
-<body ng-controller="LabCtrl">
+<body ng-controller="LabCtrl"
+      ondragstart="return false" draggable="false"
+      ondragenter="event.dataTransfer.dropEffect='none'; event.stopPropagation(); event.preventDefault();"
+      ondragover="event.dataTransfer.dropEffect='none'; event.stopPropagation(); event.preventDefault();"
+      ondrop="event.dataTransfer.dropEffect='none'; event.stopPropagation(); event.preventDefault();">
   <div id="header">
     <img src="javalablogo.gif"
 	 style="margin-top: 4px; margin-left: 4px; float: left" />
@@ -197,7 +201,10 @@
       <ul class="dropdown-menu">
         <li ng-repeat="labname in labs">
           <a href="#" tabindex="-1"
-             ng-click="switchLab(labname)">{{labname}}</a>
+             ng-click="switchLab(labname)"
+             onmouseout="this.blur();">
+            {{labname}}
+          </a>
         </li>
         <li class="divider"></li>
         <form name="newLabForm" style="margin: 0" ng-submit="newLab()">
@@ -219,7 +226,8 @@
         <li ng-repeat="home in homes | filter:matchesNewHome | limitTo:10">
           <a href="#" tabindex="-1"
              ng-click="switchHome(home.name)"
-             style="position: relative">
+             style="position: relative"
+             onmouseout="this.blur();">
             <span style="position: absolute; left: 10px"
                   ng-bind-html="home.name|highlightSubstring:newHomeName">
             </span>
