@@ -99,22 +99,19 @@ exports.populateLabPart = function(home, labName, partName, src, force, callback
 
 var homeLabCallback = {};
 exports.getOrCreateHomeLab = function(home, labName, callback) {
-
   readHomeLab(home, labName, function(e, item) {
     if (e) return callback(e);
     if (item) return callback(null, item);
 
-    var homeLabKey= home+":"+labName;
-    if(homeLabCallback[homeLabKey]==undefined) {
-      homeLabCallback[homeLabKey]=[];
-    }
-    else {
-      homeLabCallback[homeLabKey].push(function(){
-	exports.getOrCreateHomeLab(home, labName, callback);
+    var homeLabKey = home + ':' + labName;
+    if (homeLabCallback[homeLabKey] == undefined) {
+      homeLabCallback[homeLabKey] = [];
+    } else {
+      homeLabCallback[homeLabKey].push(function() {
+        exports.getOrCreateHomeLab(home, labName, callback);
       });
       return;
     }
-
 
     // home lab does not exist in DB, create it
     readLab(labName, function(e, labPartData) {
@@ -133,11 +130,11 @@ exports.getOrCreateHomeLab = function(home, labName, callback) {
           if (e) return callback(e);
           readHomeLab(home, labName, function(e, item) {
             if (e) return callback(e);
-            _.each(homeLabCallback[homeLabKey], function(f){  
-	      f();
-	    });
-	    delete homeLabCallback[homeLabKey];
-	    return callback(null, item);
+            _.each(homeLabCallback[homeLabKey], function(f) {
+              f();
+            });
+            delete homeLabCallback[homeLabKey];
+            return callback(null, item);
           });
         });
       });
@@ -170,4 +167,24 @@ exports.listHomes = function(callback) {
 
 exports.listLabs = function(callback) {
   fs.readdir('labs', callback);
+}
+
+exports.getUser = function(user, callback) {
+  db.collection('users', function(e, collection) {
+    if (e) return callback(e);
+    collection.findOne({user: user}, function(e, item) {
+      if (e) return callback(e);
+      if (item) return callback(null, item);
+      return callback(null, {user: user});
+    });
+  });
+}
+
+exports.updateUser = function(item, callback) {
+  db.collection('users', function(e, collection) {
+    if (e) return callback(e);
+    collection.update({user: item.user}, item, {upsert: true}, function(e, result) {
+      return callback(e);
+    });
+  });
 }

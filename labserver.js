@@ -14,6 +14,7 @@ var MAIN_BOILERPLATE =
 
 var nextId = 0;
 var homes = {};
+var users = {};
 
 labdb.eventEmitter.once('open', function() {
   labdb.listHomes(function(e, homeNames) {
@@ -37,7 +38,7 @@ exports.attach = function(server) {
     var id = nextId++;
     util.log('labserver ' + id + ' connected');
 
-    var user = '';
+    var user = null;
     var home = null;
     var lab = '';
     var labPart = '';
@@ -163,7 +164,7 @@ exports.attach = function(server) {
           part.users = [];
           _.each(home.socks, function(sock) {
             if (sock.getLab() == labName && sock.getLabPart() == part.name) {
-              part.users.push({user: sock.getUser(), id: sock.getCursor().id});
+              part.users.push({user: sock.getUser().user, id: sock.getCursor().id});
             }
           });
         });
@@ -188,7 +189,19 @@ exports.attach = function(server) {
       switch (req.type) {
       case 'setUser':
         util.log('labserver ' + id + ' sets user to ' + req.user);
-        user = req.user;
+        if (req.user in users) {
+          user = users[req.user];
+        } else {
+          user = {user: req.user};
+          labdb.getUser(req.user, function(e, item) {
+            if (req.user in users) {
+              user = users[req.user];
+            } else {
+              user = item;
+              users[req.user] = user;
+            }
+          });
+        }
         break;
       case 'setHome':
         util.log('labserver ' + id + ' sets home to ' + req.home);
