@@ -5,16 +5,20 @@
   "dependencies": {
     "async": "*",
     "connect": "*",
+    "jayson": "*",
     "mongodb": "*",
     "share": "git://github.com/obijywk/ShareJS.git",
     "underscore": "*",
     "ws": "*"
   },
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "install": "javac -cp jars/jsonrpc2-base-1.30.jar:jars/jsonrpc2-server-1.8.jar CompileServer.java"
   },
   "config": {
     "port": "80",
+    "useCompileServer": "true",
+    "compileServerPort": "30415",
     "mongoDbHost": "localhost",
     "mongoDbPort": "27017"
   },

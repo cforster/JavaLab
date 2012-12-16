@@ -87,8 +87,8 @@ public class CompileServer {
 
 			JSONObject obj = new JSONObject();
 			obj.put("compile",res);
-			if(!res) obj.put("errors", errors);
-			return new JSONRPC2Response(obj);
+			if(!res) obj.put("errors", errors.toString());
+			return new JSONRPC2Response(obj, req.getID());
 		}	
 	}
 

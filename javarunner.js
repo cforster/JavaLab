@@ -1,7 +1,14 @@
+var _ = require('underscore')._;
 var child_process = require('child_process');
 var fs = require('fs');
+var jayson = require('jayson');
 var path = require('path');
 var util = require('util');
+
+var USE_COMPILE_SERVER =
+  process.env.npm_package_config_useCompileServer == 'true';
+var COMPILE_SERVER_PORT =
+  process.env.npm_package_config_compileServerPort || 30415;
 
 var DATA_PATH = '/tmp/javarunner';
 var POLICY_FILE = '/tmp/javarunnerpolicy';
@@ -19,9 +26,52 @@ fs.mkdir(DATA_PATH, function(e) {
   });
 });
 
+var compileServerClient =
+  jayson.client.http({port: Number(COMPILE_SERVER_PORT),
+                      hostname: 'localhost'});
+if (USE_COMPILE_SERVER) {
+  function startCompileServer() {
+    var compileServer = child_process.spawn(
+      'java', ['-cp',
+               'jars/jsonrpc2-base-1.30.jar:jars/jsonrpc2-server-1.8.jar:.',
+               'CompileServer', COMPILE_SERVER_PORT]);
+
+    function logNewLines(lineData) {
+      var lines = lineData.split('\n');
+      if (lines.length > 1) {
+        _.each(_.initial(lines), function(line) {
+          util.log('javarunner compileServer: ' + line);
+        });
+        return lines[lines.length - 1];
+      }
+      return lineData;
+    }
+
+    var stdout = '';
+    compileServer.stdout.on('data', function(data) {
+      stdout += String(data);
+      stdout = logNewLines(stdout);
+    });
+
+    var stderr = '';
+    compileServer.stderr.on('data', function(data) {
+      stderr += String(data);
+      stderr = logNewLines(stderr);
+    });
+
+    compileServer.on('exit', function(code) {
+      util.log('javarunner compileServer exited with code ' + code);
+      setTimeout(startCompileServer, 1000);
+    });
+  }
+  startCompileServer();
+}
+
 function getCPUSeconds(pid, callback) {
   fs.readFile('/proc/' + pid + '/stat', function(e, data) {
-    if (e && (e.code == 'ENOENT' || e.code == 'ESRCH')) callback(null);
+    if (e && (e.code == 'ENOENT' || e.code == 'ESRCH')) {
+      return callback(null);
+    }
     if (e) {
       util.log('Error reading from /proc/' + pid + '/stat: ' + e);
       return callback(null);
@@ -52,7 +102,7 @@ function parseJavacErrors(srcPath, stderr) {
         error.col = caretMatch[1].length;
       }
     } else {
-      util.log('Unexpected javac output line: ' + lines[i] +
+      util.log(srcPath + ' unexpected javac output line: ' + lines[i] +
                '\nFull output:\n' + stderr);
     }
   }
@@ -78,7 +128,6 @@ function JavaRunner(callback) {
   this.className = null;
   this.java = null;
   this.javac = null;
-  this.intervalId = null;
 }
 
 JavaRunner.prototype.setState = function(state) {
@@ -87,22 +136,14 @@ JavaRunner.prototype.setState = function(state) {
   this.callback({state: state});
 }
 
-JavaRunner.prototype.killJavaProcess = function() {
-  if (this.java) {
-    this.java.kill();
-    this.java = null;
-  }
-  if (this.intervalId) {
-    clearInterval(this.intervalId);
-    this.intervalId = null;
-  }
-}
-
 JavaRunner.prototype.compileRun = function(src) {
   var self = this;
   if (self.state == 'compile') return;
   self.setState('compile');
-  self.killJavaProcess();
+  if (self.java) {
+    self.java.kill();
+    self.java = null;
+  }
   self.className = getClassName(src);
   if (!self.className) {
     self.setState('idle');
@@ -120,43 +161,39 @@ JavaRunner.prototype.compileRun = function(src) {
              ' compile done (error ' + result.code + ')');
     if (result.code == 0) {
       self.setState('run');
-      self.java = child_process.spawn('java',
-                                      ['-Djava.security.manager',
-                                       '-Djava.security.policy==' + POLICY_FILE,
-                                       '-Xmx' + MAX_JAVA_HEAP,
-                                       '-Xss' + MAX_JAVA_STACK,
-                                       '-cp', self.dir, self.className]);
-      self.java.stdout.on('data', function(stdout) {
+      var java = child_process.spawn('java',
+                                     ['-Djava.security.manager',
+                                      '-Djava.security.policy==' + POLICY_FILE,
+                                      '-Xmx' + MAX_JAVA_HEAP,
+                                      '-Xss' + MAX_JAVA_STACK,
+                                      '-cp', self.dir, self.className]);
+      var intervalId = setInterval(function() {
+        getCPUSeconds(java.pid, function(cpuSeconds) {
+          if (cpuSeconds > MAX_JAVA_CPU_SECONDS) {
+            util.log('javarunner ' + self.id + ' run killed (' +
+                     cpuSeconds + ' cpu seconds used)');
+            java.kill();
+            self.callback(
+              {stdout: 'Process CPU seconds ' + cpuSeconds +
+               ' exceeded ' + MAX_JAVA_CPU_SECONDS + ' second limit.\n'});
+          }
+        });
+      }, MAX_JAVA_CPU_SECONDS * 100);
+      java.stdout.on('data', function(stdout) {
         self.callback({stdout: String(stdout)});
       });
-      self.java.stderr.on('data', function(stderr) {
+      java.stderr.on('data', function(stderr) {
         self.callback({stdout: String(stderr)});
       });
-      self.java.on('exit', function(code) {
+      java.on('exit', function(code) {
         util.log('javarunner ' + self.id + ' run done (error ' + code + ')');
-        self.java = null;
-        if (self.intervalId) {
-          clearInterval(self.intervalId);
-          self.intervalId = null;
-        }
-        if (self.state != 'compile') {
+        clearInterval(intervalId);
+        if (self.java == java) {
           self.setState('idle');
+          self.java = null;
         }
       });
-      self.intervalId = setInterval(function() {
-        if (self.java) {
-          getCPUSeconds(self.java.pid, function(cpuSeconds) {
-            if (cpuSeconds > MAX_JAVA_CPU_SECONDS) {
-              util.log('javarunner ' + self.id + ' run killed (' +
-                       cpuSeconds + ' cpu seconds used)');
-              self.killJavaProcess();
-              self.callback(
-                {stdout: 'Process CPU seconds ' + cpuSeconds +
-                 ' exceeded ' + MAX_JAVA_CPU_SECONDS + ' second limit.\n'});
-            }
-          });
-        }
-      }, MAX_JAVA_CPU_SECONDS * 100);
+      self.java = java;
     } else {
       var errors = parseJavacErrors(self.srcPath, result.stderr);
       self.setState('idle');
@@ -170,7 +207,7 @@ JavaRunner.prototype.stdin = function(stdin) {
 }
 
 JavaRunner.prototype.stop = function() {
-  this.killJavaProcess();
+  if (this.java) this.java.kill();
   if (this.javac) {
     this.javac.kill();
     this.javac = null;
@@ -195,11 +232,16 @@ JavaRunner.prototype.compile = function(src, callback) {
     util.log('javarunner ' + self.id + ' write src file ' + self.srcPath);
     fs.writeFile(self.srcPath, src, function(e) {
       if (e) throw e;
-      runJavac();
+      if (USE_COMPILE_SERVER) {
+        callCompileServer();
+      } else {
+        runJavac();
+      }
     });
   }
 
   function runJavac() {
+    var compileStart = new Date().getTime();
     util.log('javarunner ' + self.id + ' javac run');
     self.javac = child_process.spawn('javac', [self.srcPath]);
     var stdout = '';
@@ -212,12 +254,29 @@ JavaRunner.prototype.compile = function(src, callback) {
       stderr += data;
     });
     self.javac.on('exit', function(code) {
-      util.log('javarunner ' + self.id + ' javac done');
+      util.log('javarunner ' + self.id + ' javac done in ' +
+               (new Date().getTime() - compileStart) + ' ms');
       self.javac = null;
-      callback({'code': code,
-                'stdout': stdout,
-                'stderr': stderr});
+      callback({code: code,
+                stdout: stdout,
+                stderr: stderr});
     });
+  }
+
+  function callCompileServer() {
+    var compileStart = new Date().getTime();
+    util.log('javarunner ' + self.id + ' call compileServer');
+    compileServerClient.request(
+      'compile',
+      {filename: self.srcPath},
+      function(e, error, response) {
+        util.log('javarunner ' + self.id + ' compileServer done in ' +
+                 (new Date().getTime() - compileStart) + ' ms');
+        if (e) return callback({code: 1, stdout: '', stderr: e});
+        return callback({code: response.compile ? 0 : 1,
+                         stdout: '',
+                         stderr: response.errors});
+      });
   }
 }
 
