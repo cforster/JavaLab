@@ -12,8 +12,7 @@
     "ws": "*"
   },
   "scripts": {
-    "start": "node app.js",
-    "install": "javac -cp jars/jsonrpc2-base-1.30.jar:jars/jsonrpc2-server-1.8.jar CompileServer.java"
+    "start": "node app.js"
   },
   "config": {
     "port": "80",
