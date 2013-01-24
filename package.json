@@ -7,7 +7,7 @@
     "connect": "*",
     "jayson": "*",
     "mongodb": "*",
-    "share": "git://github.com/obijywk/ShareJS.git",
+    "share": "git://github.com/josephg/ShareJS.git",
     "underscore": "*",
     "ws": "*"
   },
