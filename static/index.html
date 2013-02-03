@@ -199,11 +199,11 @@
         <span class="caret"></span>
       </a>
       <ul class="dropdown-menu">
-        <li ng-repeat="labname in labs">
+        <li ng-repeat="lab in labs">
           <a href="#" tabindex="-1"
-             ng-click="switchLab(labname)"
+             ng-click="switchLab(lab)"
              onmouseout="this.blur();">
-            {{labname}}
+            {{lab.name}} ({{lab.home}})
           </a>
         </li>
         <li class="divider"></li>
@@ -261,9 +261,11 @@
           <a href="#" ng-click="switchPart(part)"
              style="margin-right: -40px">
             <i class="icon-remove" ng-click="removePart(part)"
-               ng-class="{hide: part.predefined}" title="Remove"></i>
+               ng-class="{hide: ownedLab}" title="Remove"></i>
+	    <i class="icon-ok" ng-click="publishPart(part)"
+	       ng-class="{hide: ownedLab}" title="publish"></i>
             <i class="icon-repeat" ng-click="revertPart(part)"
-               ng-class="{hide: !part.predefined}" title="Revert"></i>
+               ng-class="{hide: !ownedLab}" title="Revert"></i>
             {{part.name}}
             <span ng-repeat="user in part.users">
               <i class="icon-user" title="{{user.user}}"

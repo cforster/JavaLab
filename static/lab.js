@@ -22,7 +22,8 @@ function LabCtrl($scope) {
   $scope.user = '';
   $scope.home = '';
   $scope.homes = [];
-  $scope.lab = 'scratch';
+  $scope.ownedLab = false; 
+  $scope.lab = null;  //TODO: fix so we default to user's last lab&part
   $scope.labs = [];
   $scope.servermsg = 'disconnected';
   $scope.cursors = {};
@@ -290,9 +291,11 @@ function LabCtrl($scope) {
     });
   });
 
-  $scope.switchLab = function(labName) {
-    if ($scope.lab == labName) return;
-    $scope.lab = labName;
+  $scope.switchLab = function(lab) {
+    //if(lab==null) lab = TODO: set the default lab as the last lab 
+    if ($scope.lab == lab.name) return;
+    $scope.lab = lab.name;
+    $scope.ownedLab = $scope.lab.home == $scope.home;
     $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
   }
@@ -300,11 +303,11 @@ function LabCtrl($scope) {
   $scope.newLab = function() {
     // TODO: name validation
     $('#labDropdown').dropdown('toggle');
-    $scope.lab = $scope.newLabName;
-    $scope.labs.push($scope.lab);
+    $scope.lab  = $scope.newLabName;
+    $scope.labs.push({name:$scope.lab,home:$scope.home});
     $scope.newLabName = '';
-    $scope.switchPart(null);
     socket.send(JSON.stringify({type: 'setLab', lab: $scope.lab}));
+    $scope.switchPart(null);
   }
 
   $scope.matchesNewHome = function(home) {
