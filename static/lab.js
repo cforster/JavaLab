@@ -250,6 +250,11 @@ function LabCtrl($scope) {
     socket.send(JSON.stringify({type: 'revertLabPart', partName: part.name}));
   }
 
+  $scope.publishPart = function(part) {
+    if (!$scope.user || socket.readyState != 1) return;
+    socket.send(JSON.stringify({type: 'publishLabPart', partName: part.name}));
+  }
+
   $scope.newPart = function() {
     $scope.newPartNameChanged();
     if (!$scope.user || socket.readyState != 1) return;
